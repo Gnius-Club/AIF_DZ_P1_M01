@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>El Tesoro Secreto del Explorador: La Ruta de la Confianza (1° Primaria)</title>
+<style>
+  :root{
+    --bg:#0b1220;               /* fondo oscuro alto contraste */
+    --fg:#ffffff;               /* texto principal */
+    --accent:#00d1ff;           /* barras/contornos */
+    --good:#2ecc71;             /* verde compartir */
+    --bad:#e74c3c;              /* rojo proteger (con X) */
+    --panel:#0f1a33;            /* panel overlay */
+    --panel2:#152043;           /* panel darker */
+    --gold:#f1c40f;             /* gemas brillo */
+    --shield:#8e44ad;           /* escudo */
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; margin:0; background:var(--bg); color:var(--fg); font-family:system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+  h1,h2,h3,p{ margin:0.3rem 0; }
+  #gamewrap{ display:flex; flex-direction:column; align-items:center; gap:8px; padding:8px; }
+  #hud{ width:100%; max-width:960px; display:grid; grid-template-columns:1fr auto auto auto; gap:8px; align-items:center; }
+  .bar{
+    height:20px; border:2px solid var(--accent); border-radius:12px; background:#091024; position:relative; overflow:hidden;
+  }
+  .bar>span{ position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg, #14e1ff, #7cf9ff); width:0%; transition:width .2s; }
+  .pill{ padding:6px 10px; border-radius:999px; border:2px solid var(--accent); font-weight:700; }
+  .pill small{ opacity:.85; font-weight:600; }
+  #canvas{ width:100%; max-width:960px; aspect-ratio:16/9; background:linear-gradient(#1b2a55, #0b1220 50%); border:3px solid var(--accent); border-radius:12px; image-rendering:pixelated; touch-action:none; }
+
+  /* Panel de decisiones / briefing */
+  .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; padding:16px; }
+  .card{ width:min(900px,95vw); background:linear-gradient(180deg, var(--panel), var(--panel2)); border:3px solid var(--accent); border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.5); }
+  .card h2{ font-size:24px; }
+  .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .key{ display:flex; align-items:center; gap:6px; padding:8px 10px; background:#0c1633; border:2px solid #27407c; border-radius:12px; font-size:18px; }
+  .bigbtn{ font-size:22px; line-height:1.2; display:flex; align-items:center; justify-content:center; gap:10px; min-width:220px; padding:18px 22px; border-radius:14px; border:4px solid #fff; color:#fff; cursor:pointer; outline:4px solid transparent; outline-offset:2px; text-align:center; }
+  .bigbtn:focus{ outline-color:#ffd166; }
+  .bigbtn.green{ background:var(--good); border-color:#1b8f54; }
+  .bigbtn.red{ background:var(--bad); border-color:#a93226; }
+  .bigbtn .x{ font-weight:900; }
+  .helper{ font-size:18px; opacity:.9; }
+  .edu{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .edu div{ background:#0c1633; border:2px solid #27407c; border-radius:12px; padding:12px; }
+  .edu h3{ font-size:20px; }
+  .edu p{ font-size:18px; }
+
+  /* Controles táctiles */
+  #touch{ user-select:none; -webkit-user-select:none; width:100%; max-width:960px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .pad{ display:flex; gap:8px; align-items:center; justify-content:flex-start; }
+  .pad button{ width:80px; height:80px; border-radius:14px; border:3px solid #fff; background:#1f2d5a; color:#fff; font-size:28px; font-weight:800; }
+  .pad .wide{ width:120px; }
+  .act{ display:flex; justify-content:flex-end; gap:8px; }
+  .act button{ width:120px; height:80px; font-size:22px; border-radius:14px; border:4px solid #fff; font-weight:800; }
+  .act .ok{ background:var(--good); }
+  .act .no{ background:var(--bad); }
+  .pad button:focus, .act button:focus{ outline:5px solid #ffd166; }
+
+  /* Accesibilidad visual */
+  .sr{ position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+
+  /* Final / métricas */
+  #final{ display:none; }
+  #final h2{ font-size:26px; }
+  #final .grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  #final .metric{ background:#0c1633; border:2px solid #27407c; border-radius:12px; padding:12px; text-align:center; font-size:20px; }
+
+  /* Focus visible global */
+  :focus-visible{ outline:4px solid #ffd166 !important; outline-offset:3px; }
+
+  /* Toggle modo fácil */
+  #opts{ display:flex; align-items:center; gap:12px; }
+  label{ font-size:16px; }
+</style>
+</head>
+<body>
+<div id="gamewrap" role="application" aria-label="Videojuego educativo: El Tesoro Secreto">
+  <div id="hud" aria-live="polite">
+    <div class="bar" aria-label="Barra de Amistad"><span id="friendFill"></span></div>
+    <div class="pill" id="lives" aria-label="Cofres restantes">Cofres: <b id="lifeNum">3</b> 🔒</div>
+    <div class="pill" id="shieldState" aria-label="Escudo de Confianza">Escudo: <b id="shieldTxt">No</b> 🛡️❌</div>
+    <div id="opts" class="pill" aria-label="Opciones de dificultad"><input type="checkbox" id="easy" aria-label="Modo Fácil"/> <label for="easy">Modo Fácil</label></div>
+  </div>
+  <canvas id="canvas" width="960" height="540" aria-label="Pantalla de juego" tabindex="0"></canvas>
+
+  <!-- Controles táctiles -->
+  <div id="touch" aria-label="Controles táctiles">
+    <div class="pad">
+      <button id="left" aria-label="Mover izquierda" class="wide">⬅️</button>
+      <button id="right" aria-label="Mover derecha" class="wide">➡️</button>
+      <button id="jump" aria-label="Saltar">⤴️</button>
+    </div>
+    <div class="act">
+      <button id="btnShare" class="ok" aria-label="Compartir Gema">✅
+        <div>Compartir<br/>Gema 🍬</div>
+      </button>
+      <button id="btnProtect" class="no" aria-label="Proteger Tesoro"><span class="x">❌</span>
+        <div>Proteger<br/>Tesoro 🛡️</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Briefing / Cuarto de mando -->
+  <div id="brief" class="overlay" role="dialog" aria-modal="true" aria-label="Briefing: Ciudadanía digital">
+    <div class="card">
+      <h2>Comandante Kael</h2>
+      <p class="helper">Tema: Ciudadanía digital — proteger datos.</p>
+      <div class="edu">
+        <div>
+          <h3>🧰 Tesoros Secretos 🔒</h3>
+          <p>👤 nombre completo</p>
+          <p>🏠 dirección</p>
+          <p>📞 teléfono</p>
+          <p><b>No</b> compartir.</p>
+        </div>
+        <div>
+          <h3>💎 Gemas Públicas</h3>
+          <p>🍕 pizza · 🐶 perros</p>
+          <p>🎨 dibujar · 🔵 azul</p>
+          <p>✔️ Sí compartir.</p>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="key" aria-hidden="true">Teclas: ← → saltar <b>Espacio</b> · <b>Z</b> Gema · <b>X</b> Escudo</div>
+        <span class="helper">Modo Prelectores: voz automática.</span>
+      </div>
+      <div class="row" style="justify-content:center;margin-top:8px">
+        <button class="bigbtn green" id="start" aria-label="Entendido, iniciar">🚀 ¡Entendido!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de eventos (A y B) -->
+  <div id="panel" class="overlay" role="dialog" aria-modal="true" aria-label="Decisión">
+    <div class="card" id="panelCard">
+      <h2 id="panelTitle">Evento</h2>
+      <p id="panelMsg" class="helper">Mensaje…</p>
+      <div id="panelPics" class="row" aria-hidden="false" style="font-size:28px"></div>
+      <div class="row" style="justify-content:center;margin-top:10px">
+        <button class="bigbtn green" id="decShare" aria-label="Compartir Gema opción">✅ Compartir Gema</button>
+        <button class="bigbtn red" id="decProtect" aria-label="Proteger Tesoro opción">❌ Proteger Tesoro</button>
+      </div>
+      <p id="panelHint" class="helper" style="margin-top:8px"></p>
+    </div>
+  </div>
+
+  <!-- Final -->
+  <div id="final" class="card" role="region" aria-live="polite">
+    <h2 id="finalTitle">¡Fin del nivel!</h2>
+    <p id="finalMsg" class="helper">Mensaje final…</p>
+    <div class="grid" style="margin-top:8px">
+      <div class="metric">Gemas públicas: <b id="mGems">0</b></div>
+      <div class="metric">Protecciones: <b id="mProtec">0</b></div>
+      <div class="metric">Cofres perdidos: <b id="mLost">0</b></div>
+    </div>
+    <p class="helper" style="margin-top:10px">Hoy aprendiste: gustos se comparten, secretos se protegen.</p>
+    <div class="row" style="justify-content:center;margin-top:8px">
+      <button class="bigbtn green" id="again" aria-label="Jugar otra vez">🔁 Jugar otra vez</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== JS ===================== -->
+<script>
+/*
+  El Tesoro Secreto del Explorador — Juego educativo de una sola página
+  Requisitos clave:
+  - Un archivo sin librerías externas. Jugable offline.
+  - Modo prelectores con speechSynthesis.
+  - Dos decisiones: Compartir Gema (verde) y Proteger Tesoro (rojo ❌).
+  - Círculo de Confianza (gustos) -> compartir correcto.
+  - Chat Trampa (dato privado) -> proteger correcto.
+  - Alto contraste, botones grandes, teclado y táctil.
+*/
+
+// ---------- Utilidades de voz ----------
+const VOZ_RATE_NORMAL = 0.9; // ritmo lento para 1° primaria
+const VOZ_RATE_LENTO = 0.8;
+function speak(text, rate=VOZ_RATE_NORMAL){
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'es-MX';
+    u.rate = rate; // más lento
+    window.speechSynthesis.speak(u);
+  }catch(e){ /* silencio si no hay voz */ }
+}
+
+// Pequeños bips sin archivos externos
+const AudioFX = (()=>{
+  let ctx; function init(){ ctx = ctx || new (window.AudioContext||window.webkitAudioContext)(); return ctx; }
+  function beep(type='sine', f=880, t=0.1, v=0.05){
+    const actx=init(); const o=actx.createOscillator(); const g=actx.createGain();
+    o.type=type; o.frequency.value=f; g.gain.value=v; o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime+t);
+  }
+  return {
+    bling(){ beep('triangle',1200,0.12,0.06); },
+    good(){ beep('sine',600,0.12,0.06); },
+    warn(){ beep('square',180,0.15,0.07); },
+    hit(){ beep('sawtooth',140,0.12,0.07); },
+  };
+})();
+
+// ---------- Datos educativos ----------
+const GEMAS_PUBLICAS = ["🍕","🐶","🎨","🔵","🎮","🏃‍♂️"]; // gustos
+const SECRETOS = ["👤 nombre completo","🏠 dirección","📞 teléfono"]; // nunca compartir
+
+// ---------- Estado global ----------
+const canvas = document.getElementById('canvas');
+const cx = canvas.getContext('2d');
+let W=canvas.width, H=canvas.height;
+let keys = {left:false,right:false,jump:false, share:false, protect:false};
+let touchState={left:false,right:false};
+let game; // estado actual del juego
+
+function resetGame(){
+  game = {
+    started:false,
+    easy: document.getElementById('easy').checked,
+    lives:3, // cofres
+    shield:false,
+    friend:0, // 0-100
+    gems:[],
+    enemies:[],
+    player:{x:60,y:0,vx:0,vy:0,w:28,h:36,onGround:false, flip:false, superJump:false},
+    platforms:[ // plataformas simples
+      {x:0,y:H-40,w:W,h:40},
+      {x:200,y:H-140,w:220,h:18},
+      {x:500,y:H-220,w:200,h:18},
+      {x:780,y:H-120,w:160,h:18},
+    ],
+    camX:0,
+    section:0, // 0 movimiento, 1 confianza, 2 chat trampa
+    timers:{ event:false },
+    metrics:{gems:0, protect:0, lost:0},
+    finished:false,
+    decisionTimeout: game?.easy ? 9_000 : 7_000,
+  };
+  // poblar gemas públicas
+  const gemXs = [160, 260, 560, 820, 900, 1040];
+  game.gems = gemXs.map((gx,i)=>({x:gx, y:H-80-(i%2?80:0), r:14, kind:GEMAS_PUBLICAS[i%GEMAS_PUBLICAS.length], taken:false}));
+  // enemigos (Robadatos)
+  const baseEnemies = game.easy? 2:3;
+  for(let i=0;i<baseEnemies;i++){
+    game.enemies.push({x:420+i*160, y:H-58, w:28,h:24, dir: i%2?1:-1, speed: game.easy?0.6:0.8});
+  }
+  // posiciones de eventos
+  game.eventA = {x:650, done:false}; // Círculo de Confianza
+  game.eventB = {x:1120, done:false}; // Chat Trampa
+  updateHUD();
+}
+
+// ---------- HUD ----------
+const friendFill = document.getElementById('friendFill');
+const lifeNum = document.getElementById('lifeNum');
+const shieldTxt = document.getElementById('shieldTxt');
+function updateHUD(){
+  friendFill.style.width = game.friend+"%";
+  lifeNum.textContent = game.lives;
+  shieldTxt.textContent = game.shield? 'Sí' : 'No';
+}
+
+// ---------- Eventos GUI ----------
+const brief = document.getElementById('brief');
+const startBtn = document.getElementById('start');
+const panel = document.getElementById('panel');
+const panelTitle = document.getElementById('panelTitle');
+const panelMsg = document.getElementById('panelMsg');
+const panelPics = document.getElementById('panelPics');
+const panelHint = document.getElementById('panelHint');
+
+startBtn.onclick = ()=>{
+  brief.style.display='none';
+  speak("Misión: protege tus secretos.", VOZ_RATE_LENTO);
+  game.started=true;
+  canvas.focus();
+}
+
+function showBrief(){
+  brief.style.display='flex';
+  speak("Soy Kael. Escucha y mira.", VOZ_RATE_LENTO);
+  setTimeout(()=> speak("No compartas nombre, casa, teléfono.", VOZ_RATE_LENTO), 800);
+  setTimeout(()=> speak("Sí comparte gustos como pizza o perros.", VOZ_RATE_LENTO), 1800);
+}
+
+let pendingResolve=null; // para esperar decisión
+function showEventA(){
+  const gustos = ["🍕","🐶","🎨","🔵"];
+  panelTitle.textContent = "Círculo de Confianza";
+  panelMsg.textContent = "¿Qué te gusta?";
+  panelPics.innerHTML = gustos.map(g=>`<span>${g}</span>`).join(' ');
+  panelHint.textContent = "Con familia y amigos, comparte gustos.";
+  panel.style.display='flex';
+  speak("Amigo seguro. ¿Qué te gusta?", VOZ_RATE_LENTO);
+  return new Promise(res=>{
+    pendingResolve = (choice)=>{
+      panel.style.display='none';
+      if(choice==='share'){
+        AudioFX.good();
+        speak("¡Muy bien! Comparte gustos.");
+        // power-up: súper salto por un rato
+        game.player.superJump = true; setTimeout(()=> game.player.superJump=false, 8000);
+      }else{
+        // opción incorrecta aquí no penaliza, pero guiamos
+        speak("Comparte solo gustos aquí.");
+      }
+      res();
+    }
+  });
+}
+
+function randomSecretPrompt(){
+  const arr = [
+    {msg:"Dime tu nombre completo 👤 para un premio.", pics:"👤🔒"},
+    {msg:"¿Cuál es tu dirección 🏠?", pics:"🏠🔒"},
+    {msg:"Pásame tu teléfono 📞.", pics:"📞🔒"},
+  ];
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+function showEventB(){
+  const s = randomSecretPrompt();
+  panelTitle.textContent = "Chat Trampa";
+  panelMsg.textContent = s.msg;
+  panelPics.textContent = s.pics;
+  panelHint.textContent = "Usa el escudo ❌. Protege tu tesoro.";
+  panel.style.display='flex';
+  speak("Desconocido. Protege tu tesoro.", VOZ_RATE_LENTO);
+  return new Promise(res=>{
+    pendingResolve = (choice)=>{
+      panel.style.display='none';
+      if(choice==='protect'){
+        game.metrics.protect++; AudioFX.good();
+        speak("¡Jugada de genio! Protegiste tu secreto!");
+      }else{
+        // elección errónea -> corrección guiada y pérdida única
+        speak("Ups. Ese es un secreto. Elige escudo.");
+        AudioFX.warn();
+        loseLifeOnce();
+      }
+      res();
+    }
+  });
+}
+
+// Botones del panel
+const decShare = document.getElementById('decShare');
+const decProtect = document.getElementById('decProtect');
+function resolve(choice){ if(pendingResolve){ const cb=pendingResolve; pendingResolve=null; cb(choice);} }
+decShare.onclick = ()=> resolve('share');
+decProtect.onclick = ()=> resolve('protect');
+
+// Atajos desde botones táctiles grandes
+const btnShare = document.getElementById('btnShare');
+const btnProtect = document.getElementById('btnProtect');
+btnShare.onclick = ()=> resolve('share');
+btnProtect.onclick = ()=> resolve('protect');
+
+// ---------- Controles ----------
+function setKey(k, val){ keys[k]=val; }
+window.addEventListener('keydown', (e)=>{
+  if(['ArrowLeft','ArrowRight',' ' ,'z','x','Z','X'].includes(e.key)) e.preventDefault();
+  if(e.key==='ArrowLeft') setKey('left', true);
+  if(e.key==='ArrowRight') setKey('right', true);
+  if(e.key===' ') setKey('jump', true);
+  if(e.key==='z' || e.key==='Z') setKey('share', true);
+  if(e.key==='x' || e.key==='X') setKey('protect', true);
+});
+window.addEventListener('keyup', (e)=>{
+  if(e.key==='ArrowLeft') setKey('left', false);
+  if(e.key==='ArrowRight') setKey('right', false);
+  if(e.key===' ') setKey('jump', false);
+  if(e.key==='z' || e.key==='Z') setKey('share', false);
+  if(e.key==='x' || e.key==='X') setKey('protect', false);
+});
+
+// Táctil direccional
+function hold(btn,flag){ btn.addEventListener('pointerdown',()=>{touchState[flag]=true; btn.setPointerCapture?.(event.pointerId);}); btn.addEventListener('pointerup',()=>{touchState[flag]=false;}); btn.addEventListener('pointerleave',()=>{touchState[flag]=false;}); }
+hold(document.getElementById('left'),'left');
+hold(document.getElementById('right'),'right');
+document.getElementById('jump').addEventListener('click', ()=> setKey('jump', true));
+
+// ---------- Lógica de juego ----------
+function rectsOverlap(a,b){ return a.x<aW(b) && aW(a)>b.x && a.y<aH(b) && aH(a)>b.y; }
+function aW(o){ return o.x+o.w; } function aH(o){ return o.y+o.h; }
+
+function collectGems(){
+  for(const g of game.gems){ if(g.taken) continue; const dx = (game.player.x+14) - g.x; const dy = (game.player.y+18) - g.y; const d2=dx*dx+dy*dy; if(d2 < (g.r+22)*(g.r+22)){
+      g.taken=true; game.friend=Math.min(100, game.friend+25); game.metrics.gems++; AudioFX.bling(); updateHUD();
+      speak("¡Gusto seguro para compartir!");
+      if(game.friend>=100 && !game.shield){ game.shield=true; game.friend=0; updateHUD(); speak("Escudo activo."); }
+    }}
+}
+
+function loseLifeOnce(){
+  if(game.shield){ game.shield=false; updateHUD(); speak("Escudo te protege."); return; }
+  if(game.lives>0){ game.lives--; game.metrics.lost++; updateHUD(); AudioFX.hit(); speak("¡Cuidado! Guarda tu tesoro."); if(game.lives<=0){ endGame(false); } }
+}
+
+function update(dt){
+  if(!game.started || game.finished) return;
+  const p = game.player;
+
+  // entrada
+  const moveLeft = keys.left || touchState.left;
+  const moveRight = keys.right || touchState.right;
+  const speed = game.easy? 0.9 : 0.8; // ritmo lento
+  p.vx = (moveRight?1:0 - (moveLeft?1:0)) * (120*speed);
+  p.flip = moveLeft && !moveRight;
+
+  // gravedad y salto
+  const G = 600; p.vy += G*dt; // gravedad suave
+  const maxVy = 520; if(p.vy>maxVy) p.vy=maxVy;
+  const jumpStrength = p.superJump? -300 : -260;
+  if(p.onGround && keys.jump){ p.vy = jumpStrength; p.onGround=false; keys.jump=false; }
+
+  // mover con colisiones simples
+  p.x += p.vx*dt; collideAxis('x');
+  p.y += p.vy*dt; collideAxis('y');
+
+  // cámara lateral
+  game.camX = Math.max(0, Math.min(p.x-200, 1400));
+
+  // recoger gemas
+  collectGems();
+
+  // enemigos
+  for(const e of game.enemies){ e.x += e.dir * (40*e.speed) * dt; if(e.x<380) e.dir=1; if(e.x>1280) e.dir=-1; const box={x:e.x,y:e.y,w:e.w,h:e.h}; if(rectsOverlap({x:p.x,y:p.y,w:p.w,h:p.h},box)){ loseLifeOnce(); p.x -= e.dir*10; }
+  }
+
+  // eventos guiados
+  if(!game.eventA.done && p.x>game.eventA.x){ game.eventA.done=true; pauseAndEvent(showEventA); }
+  if(!game.eventB.done && p.x>game.eventB.x){ game.eventB.done=true; pauseAndEvent(showEventB); }
+
+  // fin del nivel (bóveda)
+  if(p.x>1380){ endGame(game.lives>=1); }
+}
+
+function collideAxis(axis){
+  const p=game.player; const arr=game.platforms;
+  for(const s of arr){ const r={x:s.x,y:s.y,w:s.w,h:s.h}; const me={x:p.x,y:p.y,w:p.w,h:p.h}; if(rectsOverlap(me,r)){
+      if(axis==='y'){
+        if(p.vy>0){ p.y = s.y - p.h; p.vy=0; p.onGround=true; }
+        else if(p.vy<0){ p.y = s.y + s.h; p.vy=0; }
+      }else{
+        if(p.vx>0){ p.x = s.x - p.w; }
+        else if(p.vx<0){ p.x = s.x + s.w; }
+        p.vx=0;
+      }
+    }
+  }
+  // suelo
+  if(p.y>H-40-p.h){ p.y=H-40-p.h; p.vy=0; p.onGround=true; }
+}
+
+function pauseAndEvent(fn){
+  // detener inputs un momento y abrir panel
+  const oldStarted = game.started; game.started=false;
+  const timeout = (game.easy? 9000:7000); // tiempo extra para decidir
+  let decided=false; let timer = setTimeout(()=>{ if(!decided){ speak("Tiempo. Protege tu secreto."); } }, timeout);
+  fn().then(()=>{ decided=true; clearTimeout(timer); game.started=oldStarted; });
+}
+
+function endGame(win){
+  game.finished=true;
+  document.getElementById('final').style.display='block';
+  const title = document.getElementById('finalTitle');
+  const msg = document.getElementById('finalMsg');
+  document.getElementById('mGems').textContent = game.metrics.gems;
+  document.getElementById('mProtec').textContent = game.metrics.protect;
+  document.getElementById('mLost').textContent = game.metrics.lost;
+  if(win){
+    title.textContent = '¡Victoria! Bóveda alcanzada';
+    msg.textContent = 'Medalla por tu gran decisión.';
+    speak('¡Mis secretos protejo, con calma y reflejo!');
+  }else{
+    title.textContent = 'Sin cofres. ¡Ánimo!';
+    msg.textContent = 'Respira y probemos de nuevo.';
+    speak('Respira. Probemos de nuevo.');
+  }
+}
+
+document.getElementById('again').onclick = ()=>{ document.getElementById('final').style.display='none'; resetGame(); showBrief(); };
+document.getElementById('easy').addEventListener('change', ()=>{ const wasStart = game.started; resetGame(); game.started=wasStart; });
+
+// ---------- Dibujo ----------
+function draw(){
+  cx.clearRect(0,0,W,H);
+  // fondo cielo
+  const grad = cx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#1c2f6a'); grad.addColorStop(1,'#0b1220');
+  cx.fillStyle=grad; cx.fillRect(0,0,W,H);
+
+  cx.save();
+  cx.translate(-game.camX,0);
+
+  // estrellas simples
+  cx.fillStyle = 'rgba(255,255,255,.35)';
+  for(let i=0;i<40;i++){ cx.fillRect((i*90)%1700, (i*53)%280, 2,2); }
+
+  // plataformas
+  for(const s of game.platforms){
+    cx.fillStyle = '#223566'; cx.fillRect(s.x, s.y, s.w, s.h);
+    cx.strokeStyle = '#55aaff'; cx.lineWidth=2; cx.strokeRect(s.x, s.y, s.w, s.h);
+  }
+
+  // gemas
+  for(const g of game.gems){ if(g.taken) continue; cx.beginPath(); cx.arc(g.x,g.y,g.r,0,Math.PI*2); cx.fillStyle='#15407a'; cx.fill(); cx.lineWidth=3; cx.strokeStyle= '#7cf9ff'; cx.stroke(); cx.font='20px system-ui'; cx.textAlign='center'; cx.textBaseline='middle'; cx.fillStyle='#fff'; cx.fillText(g.kind,g.x,g.y); }
+
+  // enemigos Robadatos (fantasmitas)
+  for(const e of game.enemies){
+    cx.fillStyle = '#8b2a2a'; cx.fillRect(e.x, e.y, e.w, e.h);
+    cx.fillStyle = '#fff'; cx.fillRect(e.x+6, e.y+6, 6,6); cx.fillRect(e.x+e.w-12, e.y+6, 6,6);
+  }
+
+  // evento A icono
+  cx.font='26px system-ui'; cx.fillStyle='#fff'; cx.fillText('👪 Círculo', game.eventA.x, H-250);
+  // evento B icono
+  cx.fillText('❔ Chat', game.eventB.x, H-250);
+
+  // bóveda final
+  cx.fillStyle='#d4af37'; cx.fillRect(1400, H-140, 120, 100);
+  cx.strokeStyle='#fff'; cx.lineWidth=3; cx.strokeRect(1400,H-140,120,100);
+  cx.font='28px system-ui'; cx.fillStyle='#000'; cx.fillText('🏦',1460,H-90);
+
+  // jugador
+  const p = game.player;
+  cx.save();
+  cx.translate(p.x + p.w/2, p.y + p.h/2);
+  cx.scale(p.flip?-1:1,1);
+  // cuerpo
+  cx.fillStyle='#34a0ff'; cx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+  cx.font='24px system-ui'; cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText('🧒',0,0);
+  if(game.shield){ cx.strokeStyle='#caa3ff'; cx.lineWidth=4; cx.beginPath(); cx.arc(0,0,24,0,Math.PI*2); cx.stroke(); }
+  cx.restore();
+
+  cx.restore();
+}
+
+// ---------- Bucle ----------
+let last=0; function loop(t){ const dt = Math.min(0.033, (t-last)/1000); last=t; update(dt); draw(); requestAnimationFrame(loop);} requestAnimationFrame(loop);
+
+// ---------- Inicio ----------
+window.addEventListener('resize', ()=>{ /* mantenemos canvas responsivo por CSS */ });
+resetGame(); showBrief();
+
+// ---------- Accesibilidad: decisiones con teclado ----------
+// Solo existen dos decisiones globales. Z = Compartir Gema, X = Proteger Tesoro.
+setInterval(()=>{
+  if(panel.style.display==='flex'){
+    if(keys.share){ resolve('share'); keys.share=false; }
+    if(keys.protect){ resolve('protect'); keys.protect=false; }
+  }
+}, 50);
+
+// ---------- QA/Asserts ligeros ----------
+// 1) Solo dos decisiones disponibles: validar etiquetas de botones
+console.assert(decShare.textContent.includes('Compartir'), 'Decisión A label');
+console.assert(decProtect.textContent.includes('Proteger'), 'Decisión B label');
+// 2) Secretos nunca correctos para compartir => manejado en showEventB()
+// 3) Círculo de Confianza solo gustos => showEventA() no incluye secretos
+// 4) Voz en escenas clave: briefing, eventos, feedback, final
+</script>
+</body>
+</html>
