@@ -1,568 +1,276 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>El Tesoro Secreto del Explorador: La Ruta de la Confianza (1° Primaria)</title>
-<style>
-  :root{
-    --bg:#0b1220;               /* fondo oscuro alto contraste */
-    --fg:#ffffff;               /* texto principal */
-    --accent:#00d1ff;           /* barras/contornos */
-    --good:#2ecc71;             /* verde compartir */
-    --bad:#e74c3c;              /* rojo proteger (con X) */
-    --panel:#0f1a33;            /* panel overlay */
-    --panel2:#152043;           /* panel darker */
-    --gold:#f1c40f;             /* gemas brillo */
-    --shield:#8e44ad;           /* escudo */
-  }
-  *{ box-sizing: border-box; }
-  html,body{ height:100%; margin:0; background:var(--bg); color:var(--fg); font-family:system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
-  h1,h2,h3,p{ margin:0.3rem 0; }
-  #gamewrap{ display:flex; flex-direction:column; align-items:center; gap:8px; padding:8px; }
-  #hud{ width:100%; max-width:960px; display:grid; grid-template-columns:1fr auto auto auto; gap:8px; align-items:center; }
-  .bar{
-    height:20px; border:2px solid var(--accent); border-radius:12px; background:#091024; position:relative; overflow:hidden;
-  }
-  .bar>span{ position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg, #14e1ff, #7cf9ff); width:0%; transition:width .2s; }
-  .pill{ padding:6px 10px; border-radius:999px; border:2px solid var(--accent); font-weight:700; }
-  .pill small{ opacity:.85; font-weight:600; }
-  #canvas{ width:100%; max-width:960px; aspect-ratio:16/9; background:linear-gradient(#1b2a55, #0b1220 50%); border:3px solid var(--accent); border-radius:12px; image-rendering:pixelated; touch-action:none; }
+  <meta charset="UTF-8" />
+  <title>El Tesoro Secreto del Explorador — v5.0 (3 Niveles y Mejoras Finales)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <style>
+    :root{
+      --sky1:#8ed8ff; --sky2:#ccecff; --ground:#66cc66; --plat:#49a84d; --plat-edge:#2e7d32;
+      --ui:#ffffff; --shadow:rgba(0,0,0,.25); --btnShadow:rgba(0,0,0,.35);
+      --ok:#20c997; --warn:#ff6b6b; --accent:#0077ff; --pulse:#ffd166;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:linear-gradient(var(--sky1),var(--sky2));font-family:system-ui,Segoe UI,Roboto,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+    canvas{display:block;margin:auto;background:transparent;touch-action:none}
 
-  /* Panel de decisiones / briefing */
-  .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; padding:16px; }
-  .card{ width:min(900px,95vw); background:linear-gradient(180deg, var(--panel), var(--panel2)); border:3px solid var(--accent); border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.5); }
-  .card h2{ font-size:24px; }
-  .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-  .key{ display:flex; align-items:center; gap:6px; padding:8px 10px; background:#0c1633; border:2px solid #27407c; border-radius:12px; font-size:18px; }
-  .bigbtn{ font-size:22px; line-height:1.2; display:flex; align-items:center; justify-content:center; gap:10px; min-width:220px; padding:18px 22px; border-radius:14px; border:4px solid #fff; color:#fff; cursor:pointer; outline:4px solid transparent; outline-offset:2px; text-align:center; }
-  .bigbtn:focus{ outline-color:#ffd166; }
-  .bigbtn.green{ background:var(--good); border-color:#1b8f54; }
-  .bigbtn.red{ background:var(--bad); border-color:#a93226; }
-  .bigbtn .x{ font-weight:900; }
-  .helper{ font-size:18px; opacity:.9; }
-  .edu{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .edu div{ background:#0c1633; border:2px solid #27407c; border-radius:12px; padding:12px; }
-  .edu h3{ font-size:20px; }
-  .edu p{ font-size:18px; }
+    /* HUD */
+    #hud{position:fixed;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;z-index:9}
+    .pill{background:var(--ui);padding:8px 12px;border-radius:999px;box-shadow:0 4px 10px var(--shadow);font-weight:800}
+    .bar{width:220px;height:18px;border-radius:12px;overflow:hidden;border:2px solid #006bb3;background:#e6f6ff}
+    .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#14e1ff,#7cf9ff)}
+    #topBtns{display:flex;gap:8px}
+    #btnStart{border:none;border-radius:999px;padding:8px 14px;font-weight:900;box-shadow:0 4px 10px var(--shadow);background:linear-gradient(#96ffc8,#37d4a3)}
+    #btnStart[disabled]{filter:grayscale(1);opacity:.7;cursor:not-allowed}
+    #btnRepeat{border:none;border-radius:999px;padding:8px 14px;font-weight:900;background:#fff}
 
-  /* Controles táctiles */
-  #touch{ user-select:none; -webkit-user-select:none; width:100%; max-width:960px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .pad{ display:flex; gap:8px; align-items:center; justify-content:flex-start; }
-  .pad button{ width:80px; height:80px; border-radius:14px; border:3px solid #fff; background:#1f2d5a; color:#fff; font-size:28px; font-weight:800; }
-  .pad .wide{ width:120px; }
-  .act{ display:flex; justify-content:flex-end; gap:8px; }
-  .act button{ width:120px; height:80px; font-size:22px; border-radius:14px; border:4px solid #fff; font-weight:800; }
-  .act .ok{ background:var(--good); }
-  .act .no{ background:var(--bad); }
-  .pad button:focus, .act button:focus{ outline:5px solid #ffd166; }
+    /* --- CAMBIO CLAVE --- */
+    /* Controles táctiles y su estado deshabilitado */
+    #ui{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:grid;grid-template-columns:repeat(5, minmax(72px, 1fr));gap:10px;z-index:10;width:min(96vw,720px); transition: opacity 0.3s ease;}
+    #ui.disabled {
+      pointer-events: none; /* No se puede hacer clic/tocar */
+      opacity: 0.6; /* Indicador visual de que está inactivo */
+    }
+    #ui button{height:98px;border:none;border-radius:18px;background:var(--ui);box-shadow:0 6px 16px var(--btnShadow);font-size:18px;font-weight:900;touch-action:none}
+    #btnLeft{background:linear-gradient(#ffd0b8,#ffb084)}
+    #btnRight{background:linear-gradient(#b8d6ff,#84b7ff)}
+    #btnJump{background:linear-gradient(#b8ffce,#7dffaf)}
+    #btnJumpLeft{background:linear-gradient(#ffd0b8,#ffb084)}
+    #btnJumpRight{background:linear-gradient(#b8d6ff,#84b7ff)}
+    .press{transform:translateY(2px) scale(.98)}
+    .blink{animation:blink 1s infinite}
+    @keyframes blink{0%,60%{box-shadow:0 0 0 0 rgba(255,209,102,.8)}100%{box-shadow:0 0 0 14px rgba(255,209,102,0)}}
+    .flashZoom{animation:flashZoom .65s ease forwards}
+    @keyframes flashZoom{0%{filter:brightness(1); transform:scale(1)}30%{filter:brightness(1.6); transform:scale(1.08)}60%{filter:brightness(1.2); transform:scale(1.02)}100%{filter:brightness(1); transform:scale(1)}}
 
-  /* Accesibilidad visual */
-  .sr{ position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+    :focus-visible{outline:4px solid #ffdd55;outline-offset:3px}
 
-  /* Final / métricas */
-  #final{ display:none; }
-  #final h2{ font-size:26px; }
-  #final .grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
-  #final .metric{ background:#0c1633; border:2px solid #27407c; border-radius:12px; padding:12px; text-align:center; font-size:20px; }
-
-  /* Focus visible global */
-  :focus-visible{ outline:4px solid #ffd166 !important; outline-offset:3px; }
-
-  /* Toggle modo fácil */
-  #opts{ display:flex; align-items:center; gap:12px; }
-  label{ font-size:16px; }
-</style>
+    /* Pantalla verde de inicio */
+    #startScreen{position:fixed;inset:0;background:#18c27b;display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer}
+    #startScreen h1{color:#fff;font-size:8vw;line-height:1.1;text-shadow:0 6px 18px rgba(0,0,0,.35);margin:0}
+    #startScreen p{color:#f5fff9;font-size:3.5vw;margin:.3em 0 0 0}
+  </style>
 </head>
 <body>
-<div id="gamewrap" role="application" aria-label="Videojuego educativo: El Tesoro Secreto">
+  <div id="startScreen" role="button" aria-label="Pantalla de inicio. Toque para iniciar">
+    <div style="text-align:center"><h1>INICIAR</h1><p>(toca en cualquier parte)</p></div>
+  </div>
+
+  <canvas id="gameCanvas" width="960" height="540" aria-label="Pantalla de juego" tabindex="0"></canvas>
+
   <div id="hud" aria-live="polite">
+    <div class="pill">Nivel: <b id="levelNum">1</b>/3</div> <!-- --- CAMBIO CLAVE --- -->
     <div class="bar" aria-label="Barra de Amistad"><span id="friendFill"></span></div>
-    <div class="pill" id="lives" aria-label="Cofres restantes">Cofres: <b id="lifeNum">3</b> 🔒</div>
-    <div class="pill" id="shieldState" aria-label="Escudo de Confianza">Escudo: <b id="shieldTxt">No</b> 🛡️❌</div>
-    <div id="opts" class="pill" aria-label="Opciones de dificultad"><input type="checkbox" id="easy" aria-label="Modo Fácil"/> <label for="easy">Modo Fácil</label></div>
-  </div>
-  <canvas id="canvas" width="960" height="540" aria-label="Pantalla de juego" tabindex="0"></canvas>
-
-  <!-- Controles táctiles -->
-  <div id="touch" aria-label="Controles táctiles">
-    <div class="pad">
-      <button id="left" aria-label="Mover izquierda" class="wide">⬅️</button>
-      <button id="right" aria-label="Mover derecha" class="wide">➡️</button>
-      <button id="jump" aria-label="Saltar">⤴️</button>
-    </div>
-    <div class="act">
-      <button id="btnShare" class="ok" aria-label="Compartir Gema">✅
-        <div>Compartir<br/>Gema 🍬</div>
-      </button>
-      <button id="btnProtect" class="no" aria-label="Proteger Tesoro"><span class="x">❌</span>
-        <div>Proteger<br/>Tesoro 🛡️</div>
-      </button>
+    <div class="pill">🔒 Cofres <b id="lifeNum">3</b></div>
+    <div class="pill">🛡️ Escudo <b id="shieldTxt">No</b></div>
+    <div id="topBtns">
+      <button id="btnStart" aria-label="Iniciar misión" disabled>🚀 Iniciar</button>
+      <button id="btnRepeat" aria-label="Repetir explicación">🔁 Repetir</button>
     </div>
   </div>
-
-  <!-- Briefing / Cuarto de mando -->
-  <div id="brief" class="overlay" role="dialog" aria-modal="true" aria-label="Briefing: Ciudadanía digital">
-    <div class="card">
-      <h2>Comandante Kael</h2>
-      <p class="helper">Tema: Ciudadanía digital — proteger datos.</p>
-      <div class="edu">
-        <div>
-          <h3>🧰 Tesoros Secretos 🔒</h3>
-          <p>👤 nombre completo</p>
-          <p>🏠 dirección</p>
-          <p>📞 teléfono</p>
-          <p><b>No</b> compartir.</p>
-        </div>
-        <div>
-          <h3>💎 Gemas Públicas</h3>
-          <p>🍕 pizza · 🐶 perros</p>
-          <p>🎨 dibujar · 🔵 azul</p>
-          <p>✔️ Sí compartir.</p>
-        </div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div class="key" aria-hidden="true">Teclas: ← → saltar <b>Espacio</b> · <b>Z</b> Gema · <b>X</b> Escudo</div>
-        <span class="helper">Modo Prelectores: voz automática.</span>
-      </div>
-      <div class="row" style="justify-content:center;margin-top:8px">
-        <button class="bigbtn green" id="start" aria-label="Entendido, iniciar">🚀 ¡Entendido!</button>
-      </div>
-    </div>
+  
+  <!-- --- CAMBIO CLAVE --- Empieza deshabilitado por defecto -->
+  <div id="ui" aria-label="Controles táctiles" class="disabled">
+    <button id="btnLeft" aria-label="Mover izquierda">⬅️<div>Izquierda</div></button>
+    <button id="btnRight" aria-label="Mover derecha">➡️<div>Derecha</div></button>
+    <button id="btnJump" aria-label="Saltar">⤴️<div>Salta</div></button>
+    <button id="btnJumpLeft" aria-label="Saltar y retroceder">↖️<div>Salta+⬅️</div></button>
+    <button id="btnJumpRight" aria-label="Saltar y avanzar">↗️<div>Salta+➡️</div></button>
   </div>
 
-  <!-- Panel de eventos (A y B) -->
-  <div id="panel" class="overlay" role="dialog" aria-modal="true" aria-label="Decisión">
-    <div class="card" id="panelCard">
-      <h2 id="panelTitle">Evento</h2>
-      <p id="panelMsg" class="helper">Mensaje…</p>
-      <div id="panelPics" class="row" aria-hidden="false" style="font-size:28px"></div>
-      <div class="row" style="justify-content:center;margin-top:10px">
-        <button class="bigbtn green" id="decShare" aria-label="Compartir Gema opción">✅ Compartir Gema</button>
-        <button class="bigbtn red" id="decProtect" aria-label="Proteger Tesoro opción">❌ Proteger Tesoro</button>
-      </div>
-      <p id="panelHint" class="helper" style="margin-top:8px"></p>
-    </div>
-  </div>
-
-  <!-- Final -->
-  <div id="final" class="card" role="region" aria-live="polite">
-    <h2 id="finalTitle">¡Fin del nivel!</h2>
-    <p id="finalMsg" class="helper">Mensaje final…</p>
-    <div class="grid" style="margin-top:8px">
-      <div class="metric">Gemas públicas: <b id="mGems">0</b></div>
-      <div class="metric">Protecciones: <b id="mProtec">0</b></div>
-      <div class="metric">Cofres perdidos: <b id="mLost">0</b></div>
-    </div>
-    <p class="helper" style="margin-top:10px">Hoy aprendiste: gustos se comparten, secretos se protegen.</p>
-    <div class="row" style="justify-content:center;margin-top:8px">
-      <button class="bigbtn green" id="again" aria-label="Jugar otra vez">🔁 Jugar otra vez</button>
-    </div>
-  </div>
-
-</div>
-
-<!-- ===================== JS ===================== -->
 <script>
-/*
-  El Tesoro Secreto del Explorador — Juego educativo de una sola página
-  Requisitos clave:
-  - Un archivo sin librerías externas. Jugable offline.
-  - Modo prelectores con speechSynthesis.
-  - Dos decisiones: Compartir Gema (verde) y Proteger Tesoro (rojo ❌).
-  - Círculo de Confianza (gustos) -> compartir correcto.
-  - Chat Trampa (dato privado) -> proteger correcto.
-  - Alto contraste, botones grandes, teclado y táctil.
-*/
+// --- NARRADOR Y SONIDOS (Sin cambios) ---
+const Narrator=(()=>{const q=[];let talking=false;const synth=window.speechSynthesis;let chosenVoice=null;let voicesReady=false;function pickVoice(){try{const vs=synth.getVoices();if(vs&&vs.length){chosenVoice=vs.find(v=>/Mex|Lat|es_MX/i.test(v.name+v.lang))||vs.find(v=>/es|Spanish/i.test(v.lang))||vs[0];voicesReady=true}}catch(e){}}function say(text,rate=0.85){q.push({text,rate});run()}function sayWait(text,rate=0.85){return new Promise(res=>{const item={text,rate,_resolve:res};q.push(item);run()})}function clear(){q.length=0;try{synth.cancel()}catch(e){}talking=false}function run(){if(talking||q.length===0)return;const item=q.shift();talking=true;const u=new SpeechSynthesisUtterance(item.text);u.lang='es-MX';if(chosenVoice)u.voice=chosenVoice;u.rate=item.rate;u.onend=()=>{talking=false;if(item._resolve)item._resolve();run()};try{synth.speak(u)}catch(e){talking=false;if(item._resolve)item._resolve()}}try{pickVoice();synth.onvoiceschanged=()=>{pickVoice()}}catch(e){}return{say,sayWait,clear,get ready(){return voicesReady}}})();
+const SFX=(()=>{let ctx;function AC(){ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();return ctx}function tone(type,f,t,v){const a=AC(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+t)}function seq(freqs,t=0.06){const a=AC();let when=a.currentTime;freqs.forEach(f=>{const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start(when);o.stop(when+t);when+=t})}return{jump(){seq([480,720,540],.05)},gem(){seq([880,1320],.08)},hit(){tone('sawtooth',160,.15,.07)},ui(){tone('triangle',980,.12,.06)}}})();
 
-// ---------- Utilidades de voz ----------
-const VOZ_RATE_NORMAL = 0.9; // ritmo lento para 1° primaria
-const VOZ_RATE_LENTO = 0.8;
-function speak(text, rate=VOZ_RATE_NORMAL){
-  try{
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'es-MX';
-    u.rate = rate; // más lento
-    window.speechSynthesis.speak(u);
-  }catch(e){ /* silencio si no hay voz */ }
-}
+const canvas=document.getElementById('gameCanvas'); const ctx=canvas.getContext('2d');
+const uiControls = document.getElementById('ui'); // Referencia para habilitar/deshabilitar controles
+const hudLevel=document.getElementById('levelNum'); const hudFriend=document.getElementById('friendFill'); const hudLives=document.getElementById('lifeNum'); const hudShield=document.getElementById('shieldTxt');
 
-// Pequeños bips sin archivos externos
-const AudioFX = (()=>{
-  let ctx; function init(){ ctx = ctx || new (window.AudioContext||window.webkitAudioContext)(); return ctx; }
-  function beep(type='sine', f=880, t=0.1, v=0.05){
-    const actx=init(); const o=actx.createOscillator(); const g=actx.createGain();
-    o.type=type; o.frequency.value=f; g.gain.value=v; o.connect(g); g.connect(actx.destination);
-    o.start(); o.stop(actx.currentTime+t);
-  }
-  return {
-    bling(){ beep('triangle',1200,0.12,0.06); },
-    good(){ beep('sine',600,0.12,0.06); },
-    warn(){ beep('square',180,0.15,0.07); },
-    hit(){ beep('sawtooth',140,0.12,0.07); },
-  };
-})();
+let startGame=false, demoMode=true, tutorialStarted=false;
+const player={x:120,y:0,w:40,h:46,vx:0,vy:0,onGround:false,shield:false};
+let lives=3, friend=0, gemsCollected=0;
 
-// ---------- Datos educativos ----------
-const GEMAS_PUBLICAS = ["🍕","🐶","🎨","🔵","🎮","🏃‍♂️"]; // gustos
-const SECRETOS = ["👤 nombre completo","🏠 dirección","📞 teléfono"]; // nunca compartir
+const clouds=Array.from({length:6},(_,i)=>({x:i*160+Math.random()*100,y:40+Math.random()*90,r:24+Math.random()*18,spd:.15+.06*Math.random()}));
 
-// ---------- Estado global ----------
-const canvas = document.getElementById('canvas');
-const cx = canvas.getContext('2d');
-let W=canvas.width, H=canvas.height;
-let keys = {left:false,right:false,jump:false, share:false, protect:false};
-let touchState={left:false,right:false};
-let game; // estado actual del juego
-
-function resetGame(){
-  game = {
-    started:false,
-    easy: document.getElementById('easy').checked,
-    lives:3, // cofres
-    shield:false,
-    friend:0, // 0-100
-    gems:[],
-    enemies:[],
-    player:{x:60,y:0,vx:0,vy:0,w:28,h:36,onGround:false, flip:false, superJump:false},
-    platforms:[ // plataformas simples
-      {x:0,y:H-40,w:W,h:40},
-      {x:200,y:H-140,w:220,h:18},
-      {x:500,y:H-220,w:200,h:18},
-      {x:780,y:H-120,w:160,h:18},
-    ],
-    camX:0,
-    section:0, // 0 movimiento, 1 confianza, 2 chat trampa
-    timers:{ event:false },
-    metrics:{gems:0, protect:0, lost:0},
-    finished:false,
-    decisionTimeout: game?.easy ? 9_000 : 7_000,
-  };
-  // poblar gemas públicas
-  const gemXs = [160, 260, 560, 820, 900, 1040];
-  game.gems = gemXs.map((gx,i)=>({x:gx, y:H-80-(i%2?80:0), r:14, kind:GEMAS_PUBLICAS[i%GEMAS_PUBLICAS.length], taken:false}));
-  // enemigos (Robadatos)
-  const baseEnemies = game.easy? 2:3;
-  for(let i=0;i<baseEnemies;i++){
-    game.enemies.push({x:420+i*160, y:H-58, w:28,h:24, dir: i%2?1:-1, speed: game.easy?0.6:0.8});
-  }
-  // posiciones de eventos
-  game.eventA = {x:650, done:false}; // Círculo de Confianza
-  game.eventB = {x:1120, done:false}; // Chat Trampa
-  updateHUD();
-}
-
-// ---------- HUD ----------
-const friendFill = document.getElementById('friendFill');
-const lifeNum = document.getElementById('lifeNum');
-const shieldTxt = document.getElementById('shieldTxt');
-function updateHUD(){
-  friendFill.style.width = game.friend+"%";
-  lifeNum.textContent = game.lives;
-  shieldTxt.textContent = game.shield? 'Sí' : 'No';
-}
-
-// ---------- Eventos GUI ----------
-const brief = document.getElementById('brief');
-const startBtn = document.getElementById('start');
-const panel = document.getElementById('panel');
-const panelTitle = document.getElementById('panelTitle');
-const panelMsg = document.getElementById('panelMsg');
-const panelPics = document.getElementById('panelPics');
-const panelHint = document.getElementById('panelHint');
-
-startBtn.onclick = ()=>{
-  brief.style.display='none';
-  speak("Misión: protege tus secretos.", VOZ_RATE_LENTO);
-  game.started=true;
-  canvas.focus();
-}
-
-function showBrief(){
-  brief.style.display='flex';
-  speak("Soy Kael. Escucha y mira.", VOZ_RATE_LENTO);
-  setTimeout(()=> speak("No compartas nombre, casa, teléfono.", VOZ_RATE_LENTO), 800);
-  setTimeout(()=> speak("Sí comparte gustos como pizza o perros.", VOZ_RATE_LENTO), 1800);
-}
-
-let pendingResolve=null; // para esperar decisión
-function showEventA(){
-  const gustos = ["🍕","🐶","🎨","🔵"];
-  panelTitle.textContent = "Círculo de Confianza";
-  panelMsg.textContent = "¿Qué te gusta?";
-  panelPics.innerHTML = gustos.map(g=>`<span>${g}</span>`).join(' ');
-  panelHint.textContent = "Con familia y amigos, comparte gustos.";
-  panel.style.display='flex';
-  speak("Amigo seguro. ¿Qué te gusta?", VOZ_RATE_LENTO);
-  return new Promise(res=>{
-    pendingResolve = (choice)=>{
-      panel.style.display='none';
-      if(choice==='share'){
-        AudioFX.good();
-        speak("¡Muy bien! Comparte gustos.");
-        // power-up: súper salto por un rato
-        game.player.superJump = true; setTimeout(()=> game.player.superJump=false, 8000);
-      }else{
-        // opción incorrecta aquí no penaliza, pero guiamos
-        speak("Comparte solo gustos aquí.");
-      }
-      res();
+// --- CAMBIO CLAVE --- Se añade el tercer nivel
+let Levels=[]; let currentLevel=0; let RIGHT_LIMIT=1800; let platforms=[], enemies=[], gems=[];
+function defineLevels(){
+  Levels=[
+    { // Nivel 1
+      width:2000,
+      platforms:[{x:0,y:500,w:2000,h:40},{x:220,y:400,w:220,h:22},{x:520,y:340,w:220,h:22},{x:860,y:430,w:200,h:22},{x:1180,y:360,w:230,h:22}],
+      enemies:[{x:460,y:476,w:34,h:26,dir:1},{x:1020,y:456,w:34,h:26,dir:-1}],
+      gems:[160,260,560,820,900,1040,1260,1380].map((gx,i)=>({x:gx,y:470-(i%2?80:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false}))
+    },
+    { // Nivel 2
+      width:1600,
+      platforms:[{x:0,y:500,w:1800,h:40},{x:300,y:420,w:200,h:22},{x:700,y:360,w:200,h:22},{x:1080,y:300,w:200,h:22}],
+      enemies:[{x:520,y:476,w:34,h:26,dir:1}],
+      gems:[220,380,760,940,1200,1400].map((gx,i)=>({x:gx,y:470-(i%2?60:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false}))
+    },
+    { // Nivel 3
+      width: 2400,
+      platforms: [{x:0,y:500,w:2400,h:40},{x:250,y:410,w:150,h:22},{x:500,y:320,w:150,h:22},{x:750,y:410,w:150,h:22}, {x:1000, y:350, w:180, h:22}, {x:1300,y:420,w:120,h:22},{x:1500,y:340,w:120,h:22},{x:1700,y:260,w:120,h:22},{x:2000,y:380,w:180,h:22}],
+      enemies: [{x:600,y:476,w:34,h:26,dir:1},{x:1400,y:476,w:34,h:26,dir:-1}],
+      gems: [300,550,800,1050,1350,1550,1750,2050].map((gx,i)=>({x:gx,y:470-(i%2?90:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false}))
     }
-  });
-}
-
-function randomSecretPrompt(){
-  const arr = [
-    {msg:"Dime tu nombre completo 👤 para un premio.", pics:"👤🔒"},
-    {msg:"¿Cuál es tu dirección 🏠?", pics:"🏠🔒"},
-    {msg:"Pásame tu teléfono 📞.", pics:"📞🔒"},
   ];
-  return arr[Math.floor(Math.random()*arr.length)];
 }
-function showEventB(){
-  const s = randomSecretPrompt();
-  panelTitle.textContent = "Chat Trampa";
-  panelMsg.textContent = s.msg;
-  panelPics.textContent = s.pics;
-  panelHint.textContent = "Usa el escudo ❌. Protege tu tesoro.";
-  panel.style.display='flex';
-  speak("Desconocido. Protege tu tesoro.", VOZ_RATE_LENTO);
-  return new Promise(res=>{
-    pendingResolve = (choice)=>{
-      panel.style.display='none';
-      if(choice==='protect'){
-        game.metrics.protect++; AudioFX.good();
-        speak("¡Jugada de genio! Protegiste tu secreto!");
-      }else{
-        // elección errónea -> corrección guiada y pérdida única
-        speak("Ups. Ese es un secreto. Elige escudo.");
-        AudioFX.warn();
-        loseLifeOnce();
-      }
-      res();
-    }
-  });
+function loadLevel(idx){ currentLevel = idx; const L = Levels[idx]; RIGHT_LIMIT=L.width-200; platforms=L.platforms.map(o=>({...o})); enemies=L.enemies.map(o=>({...o})); gems=L.gems.map(o=>({...o})); player.x=120; player.y=500-player.h; camX=0; hudLevel.textContent = `${idx + 1}/${Levels.length}`; }
+
+let camX=0; let dashTimer=0, dashVX=0; const SPEED=160;
+
+const btnStart=document.getElementById('btnStart'); const btnRepeat=document.getElementById('btnRepeat'); const btnLeft=document.getElementById('btnLeft'); const btnRight=document.getElementById('btnRight'); const btnJump=document.getElementById('btnJump'); const btnJL=document.getElementById('btnJumpLeft'); const btnJR=document.getElementById('btnJumpRight');
+
+let moveLeft=false, moveRight=false;
+function blink(el,on=true){ el.classList.toggle('blink', on); }
+function press(el){ el.classList.add('press'); setTimeout(()=>el.classList.remove('press'), 180); }
+
+const particles=[]; function puff(x,y,c){ for(let i=0;i<10;i++){ particles.push({x,y,vx:(Math.random()-.5)*2,vy:-Math.random()*2-0.5,a:1,c}) } }
+function pulse(x,y){ particles.push({x,y,vx:0,vy:0,a:1,c:'#ffd166',pulse:true}); }
+function sparkleGem(){ const g=gems.find(g=>!g.taken)||gems[0]; for(let i=0;i<20;i++){ particles.push({x:g.x,y:g.y,vx:(Math.random()-.5)*3,vy:(Math.random()-.5)*3,a:1,c:'#7cf9ff'}) } }
+function demoHoldMove(dir){ return new Promise(res=>{ const t=600; if(dir<0){ moveLeft=true; setTimeout(()=>{ moveLeft=false; res(); }, t); } else { moveRight=true; setTimeout(()=>{ moveRight=false; res(); }, t); } }); }
+function demoJump(dir){ return new Promise(res=>{ if(player.onGround){ jump(true); if(dir!==0){ dashTimer=0.5; dashVX=dir*SPEED*1.25; } setTimeout(res, 650); } else { res(); } }); }
+function goCollectNearestGem(){ return new Promise(res=>{ const g=gems.find(g=>!g.taken); if(!g){ res(); return; } const dir=g.x>player.x?1:-1; dashTimer=0.6; dashVX=dir*SPEED*1.1; setTimeout(()=>{ jump(true); }, 140); setTimeout(res, 900); }); }
+function demoEnemyBump(){ return new Promise(res=>{ const e=enemies[0]; const old=e.x; e.x=player.x+80; setTimeout(()=>{ e.x=old; res(); }, 900); }); }
+
+async function tutorialSequence(){
+  demoMode=true; startGame=false; btnStart.disabled=true; blink(btnStart,false);
+  uiControls.classList.add('disabled'); // Asegura que los controles estén deshabilitados
+  player.x=120; player.y=500-player.h; player.vx=0; player.vy=0; player.onGround=true; lives=3; friend=0; hudFriend.style.width='0%'; hudLives.textContent=lives; hudShield.textContent='No';
+  Narrator.clear();
+  // El texto del tutorial se mantiene como en la versión que te gustó
+  await Narrator.sayWait('¡Hola! Soy Kael, tu guía.');
+  pulse(Levels[0].width-50, 470); await Narrator.sayWait('Misión: lleva tus cofres a la bóveda sin perder secretos.');
+  await Narrator.sayWait('Secretos: nombre, casa y teléfono. No se comparten.');
+  sparkleGem(); await Narrator.sayWait('Gustos como pizza o perros sí puedes.');
+  blink(btnLeft,true); await Narrator.sayWait('Para ir a la izquierda, presiona este botón.'); press(btnLeft); await demoHoldMove(-1); blink(btnLeft,false);
+  blink(btnRight,true); await Narrator.sayWait('Para ir a la derecha, este botón.'); press(btnRight); await demoHoldMove(1); blink(btnRight,false);
+  blink(btnJump,true); await Narrator.sayWait('Para saltar, toca este botón.'); press(btnJump); await demoJump(0); blink(btnJump,false);
+  blink(btnJR,true); await Narrator.sayWait('Salta y avanza con este.'); press(btnJR); await demoJump(1); blink(btnJR,false);
+  blink(btnJL,true); await Narrator.sayWait('Si te pasas, salta hacia atrás.'); press(btnJL); await demoJump(-1); blink(btnJL,false);
+  await Narrator.sayWait('Junta gemas para amistad y escudo.'); await goCollectNearestGem();
+  await Narrator.sayWait('Evita Robadatos. Si te tocan, pierdes un cofre.'); await demoEnemyBump();
+  btnStart.disabled=false; blink(btnStart,true);
+  btnStart.classList.add('flashZoom');
+  btnStart.addEventListener('animationend',()=>btnStart.classList.remove('flashZoom'),{once:true});
+  await Narrator.sayWait('Presiona el botón verde que está parpadeando arriba. Este botón es para iniciar el juego. ¡Diviértete y aprende!');
 }
+function startTutorialOnce(){ if(tutorialStarted) return; tutorialStarted=true; tutorialSequence(); }
 
-// Botones del panel
-const decShare = document.getElementById('decShare');
-const decProtect = document.getElementById('decProtect');
-function resolve(choice){ if(pendingResolve){ const cb=pendingResolve; pendingResolve=null; cb(choice);} }
-decShare.onclick = ()=> resolve('share');
-decProtect.onclick = ()=> resolve('protect');
+function jump(fromDemo=false){ if(player.onGround){ player.y -= 2; player.vy = -820; player.onGround=false; SFX.jump(); puff(player.x+player.w/2, player.y+player.h, '#ffffff'); if(!fromDemo) blink(btnJump,false); } }
+function pressDown(el, cb){ el.addEventListener('pointerdown',ev=>{ el.setPointerCapture?.(ev.pointerId); el.classList.add('press'); cb(true); }); el.addEventListener('pointerup',()=>{ el.classList.remove('press'); cb(false); }); el.addEventListener('pointercancel',()=>{ el.classList.remove('press'); cb(false); }); el.addEventListener('pointerleave',()=>{ el.classList.remove('press'); cb(false); }); }
+pressDown(btnLeft, v=>{ moveLeft=v; }); pressDown(btnRight, v=>{ moveRight=v; });
+btnJump.addEventListener('pointerdown',()=>{ press(btnJump); jump(); });
+btnJR.addEventListener('pointerdown',()=>{ press(btnJR); jump(); dashTimer=0.42; dashVX=+SPEED*1.25; });
+btnJL.addEventListener('pointerdown',()=>{ press(btnJL); jump(); dashTimer=0.42; dashVX=-SPEED*1.25; });
 
-// Atajos desde botones táctiles grandes
-const btnShare = document.getElementById('btnShare');
-const btnProtect = document.getElementById('btnProtect');
-btnShare.onclick = ()=> resolve('share');
-btnProtect.onclick = ()=> resolve('protect');
-
-// ---------- Controles ----------
-function setKey(k, val){ keys[k]=val; }
-window.addEventListener('keydown', (e)=>{
-  if(['ArrowLeft','ArrowRight',' ' ,'z','x','Z','X'].includes(e.key)) e.preventDefault();
-  if(e.key==='ArrowLeft') setKey('left', true);
-  if(e.key==='ArrowRight') setKey('right', true);
-  if(e.key===' ') setKey('jump', true);
-  if(e.key==='z' || e.key==='Z') setKey('share', true);
-  if(e.key==='x' || e.key==='X') setKey('protect', true);
-});
-window.addEventListener('keyup', (e)=>{
-  if(e.key==='ArrowLeft') setKey('left', false);
-  if(e.key==='ArrowRight') setKey('right', false);
-  if(e.key===' ') setKey('jump', false);
-  if(e.key==='z' || e.key==='Z') setKey('share', false);
-  if(e.key==='x' || e.key==='X') setKey('protect', false);
-});
-
-// Táctil direccional
-function hold(btn,flag){ btn.addEventListener('pointerdown',()=>{touchState[flag]=true; btn.setPointerCapture?.(event.pointerId);}); btn.addEventListener('pointerup',()=>{touchState[flag]=false;}); btn.addEventListener('pointerleave',()=>{touchState[flag]=false;}); }
-hold(document.getElementById('left'),'left');
-hold(document.getElementById('right'),'right');
-document.getElementById('jump').addEventListener('click', ()=> setKey('jump', true));
-
-// ---------- Lógica de juego ----------
-function rectsOverlap(a,b){ return a.x<aW(b) && aW(a)>b.x && a.y<aH(b) && aH(a)>b.y; }
-function aW(o){ return o.x+o.w; } function aH(o){ return o.y+o.h; }
-
-function collectGems(){
-  for(const g of game.gems){ if(g.taken) continue; const dx = (game.player.x+14) - g.x; const dy = (game.player.y+18) - g.y; const d2=dx*dx+dy*dy; if(d2 < (g.r+22)*(g.r+22)){
-      g.taken=true; game.friend=Math.min(100, game.friend+25); game.metrics.gems++; AudioFX.bling(); updateHUD();
-      speak("¡Gusto seguro para compartir!");
-      if(game.friend>=100 && !game.shield){ game.shield=true; game.friend=0; updateHUD(); speak("Escudo activo."); }
-    }}
-}
-
-function loseLifeOnce(){
-  if(game.shield){ game.shield=false; updateHUD(); speak("Escudo te protege."); return; }
-  if(game.lives>0){ game.lives--; game.metrics.lost++; updateHUD(); AudioFX.hit(); speak("¡Cuidado! Guarda tu tesoro."); if(game.lives<=0){ endGame(false); } }
-}
-
+function collide(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
 function update(dt){
-  if(!game.started || game.finished) return;
-  const p = game.player;
-
-  // entrada
-  const moveLeft = keys.left || touchState.left;
-  const moveRight = keys.right || touchState.right;
-  const speed = game.easy? 0.9 : 0.8; // ritmo lento
-  p.vx = (moveRight?1:0 - (moveLeft?1:0)) * (120*speed);
-  p.flip = moveLeft && !moveRight;
-
-  // gravedad y salto
-  const G = 600; p.vy += G*dt; // gravedad suave
-  const maxVy = 520; if(p.vy>maxVy) p.vy=maxVy;
-  const jumpStrength = p.superJump? -300 : -260;
-  if(p.onGround && keys.jump){ p.vy = jumpStrength; p.onGround=false; keys.jump=false; }
-
-  // mover con colisiones simples
-  p.x += p.vx*dt; collideAxis('x');
-  p.y += p.vy*dt; collideAxis('y');
-
-  // cámara lateral
-  game.camX = Math.max(0, Math.min(p.x-200, 1400));
-
-  // recoger gemas
-  collectGems();
-
-  // enemigos
-  for(const e of game.enemies){ e.x += e.dir * (40*e.speed) * dt; if(e.x<380) e.dir=1; if(e.x>1280) e.dir=-1; const box={x:e.x,y:e.y,w:e.w,h:e.h}; if(rectsOverlap({x:p.x,y:p.y,w:p.w,h:p.h},box)){ loseLifeOnce(); p.x -= e.dir*10; }
-  }
-
-  // eventos guiados
-  if(!game.eventA.done && p.x>game.eventA.x){ game.eventA.done=true; pauseAndEvent(showEventA); }
-  if(!game.eventB.done && p.x>game.eventB.x){ game.eventB.done=true; pauseAndEvent(showEventB); }
-
-  // fin del nivel (bóveda)
-  if(p.x>1380){ endGame(game.lives>=1); }
-}
-
-function collideAxis(axis){
-  const p=game.player; const arr=game.platforms;
-  for(const s of arr){ const r={x:s.x,y:s.y,w:s.w,h:s.h}; const me={x:p.x,y:p.y,w:p.w,h:p.h}; if(rectsOverlap(me,r)){
-      if(axis==='y'){
-        if(p.vy>0){ p.y = s.y - p.h; p.vy=0; p.onGround=true; }
-        else if(p.vy<0){ p.y = s.y + s.h; p.vy=0; }
-      }else{
-        if(p.vx>0){ p.x = s.x - p.w; }
-        else if(p.vx<0){ p.x = s.x + s.w; }
-        p.vx=0;
-      }
+  for(const cl of clouds){ cl.x += cl.spd; if(cl.x-60>canvas.width+camX) cl.x = camX - 120; }
+  if(!(startGame||demoMode)) return;
+  let baseVX = (moveRight?SPEED:0) + (moveLeft?-SPEED:0);
+  if(dashTimer>0){ baseVX = dashVX; dashTimer -= dt; if(dashTimer<=0){ dashVX=0; } }
+  player.vx = baseVX;
+  player.vy += 1900*dt; if(player.vy>1200) player.vy=1200;
+  player.x += player.vx*dt;
+  for(const s of platforms){ if(collide(player,s)){ if(player.vx>0) player.x = s.x - player.w; else if(player.vx<0) player.x = s.x + s.w; } }
+  player.y += player.vy*dt; player.onGround=false;
+  for(const s of platforms){ if(collide(player,s)){ if(player.vy>0){ player.y = s.y - player.h; player.vy=0; player.onGround=true; } else if(player.vy<0){ player.y = s.y + s.h; player.vy=0; } } }
+  if(player.y>500-player.h){ player.y=500-player.h; player.vy=0; player.onGround=true; }
+  camX = Math.max(0, Math.min(player.x-220, RIGHT_LIMIT));
+  for(const e of enemies){ e.x += e.dir*40*dt; if(e.x<380) e.dir=1; if(e.x>RIGHT_LIMIT+100) e.dir=-1; if(startGame && collide(player,e)){ if(player.shield){ player.shield=false; hudShield.textContent='No'; Narrator.say('Escudo te protege.'); } else { lives=Math.max(0,lives-1); hudLives.textContent=lives; SFX.hit(); Narrator.say('¡Cuidado! Tesoro perdido.'); if(lives<=0){ gameOver(false); } } player.x -= e.dir*10; } }
+  for(const g of gems){ if(g.taken) continue; g.t += dt; if(Math.hypot(player.x+20-g.x, player.y+20-g.y) < 28){ g.taken=true; gemsCollected++; friend=Math.min(100, friend+25); hudFriend.style.width=friend+'%'; SFX.gem(); if(startGame) Narrator.say('¡Gema segura!'); if(friend>=100 && !player.shield){ player.shield=true; friend=0; hudFriend.style.width='0%'; hudShield.textContent='Sí'; if(startGame) Narrator.say('Escudo activo.'); } } }
+  for(let i=particles.length-1;i>=0;i--) { particles[i].x+=particles[i].vx; particles[i].y+=particles[i].vy; particles[i].a-=0.02; if(particles[i].a<=0) particles.splice(i,1); }
+  
+  // --- CAMBIO CLAVE --- Lógica para múltiples niveles
+  if(startGame && player.x > RIGHT_LIMIT + 60){
+    if(currentLevel < Levels.length - 1){
+      startLevelTransition(currentLevel + 1);
+    } else {
+      gameOver(true); // Fin del juego al pasar el último nivel
     }
   }
-  // suelo
-  if(p.y>H-40-p.h){ p.y=H-40-p.h; p.vy=0; p.onGround=true; }
+}
+function startLevelTransition(nextLevel){
+  startGame=false;
+  uiControls.classList.add('disabled'); // Deshabilita controles en la transición
+  Narrator.say('¡Siguiente nivel!');
+  const targetX = RIGHT_LIMIT + 100;
+  const step=()=>{ if(player.x<targetX){ player.x+=4; requestAnimationFrame(step);} else { setTimeout(()=>{ loadLevel(nextLevel); startGame=true; uiControls.classList.remove('disabled'); }, 500); } }; // Rehabilita al cargar
+  step();
 }
 
-function pauseAndEvent(fn){
-  // detener inputs un momento y abrir panel
-  const oldStarted = game.started; game.started=false;
-  const timeout = (game.easy? 9000:7000); // tiempo extra para decidir
-  let decided=false; let timer = setTimeout(()=>{ if(!decided){ speak("Tiempo. Protege tu secreto."); } }, timeout);
-  fn().then(()=>{ decided=true; clearTimeout(timer); game.started=oldStarted; });
+function gameOver(win){
+  startGame=false;
+  uiControls.classList.add('disabled'); // Deshabilita controles en Game Over
+  if(win){ Narrator.say('¡Felicidades! ¡Bóveda alcanzada! Has ganado la medalla de guardián.'); } else { Narrator.say('Respira. Intentemos de nuevo.'); }
+  setTimeout(()=>{ demoMode=true; startGame=false; tutorialStarted=false; blink(btnStart,false); btnStart.disabled=true; loadLevel(0); startTutorialOnce(); }, 2500);
 }
 
-function endGame(win){
-  game.finished=true;
-  document.getElementById('final').style.display='block';
-  const title = document.getElementById('finalTitle');
-  const msg = document.getElementById('finalMsg');
-  document.getElementById('mGems').textContent = game.metrics.gems;
-  document.getElementById('mProtec').textContent = game.metrics.protect;
-  document.getElementById('mLost').textContent = game.metrics.lost;
-  if(win){
-    title.textContent = '¡Victoria! Bóveda alcanzada';
-    msg.textContent = 'Medalla por tu gran decisión.';
-    speak('¡Mis secretos protejo, con calma y reflejo!');
-  }else{
-    title.textContent = 'Sin cofres. ¡Ánimo!';
-    msg.textContent = 'Respira y probemos de nuevo.';
-    speak('Respira. Probemos de nuevo.');
-  }
-}
-
-document.getElementById('again').onclick = ()=>{ document.getElementById('final').style.display='none'; resetGame(); showBrief(); };
-document.getElementById('easy').addEventListener('change', ()=>{ const wasStart = game.started; resetGame(); game.started=wasStart; });
-
-// ---------- Dibujo ----------
 function draw(){
-  cx.clearRect(0,0,W,H);
-  // fondo cielo
-  const grad = cx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,'#1c2f6a'); grad.addColorStop(1,'#0b1220');
-  cx.fillStyle=grad; cx.fillRect(0,0,W,H);
-
-  cx.save();
-  cx.translate(-game.camX,0);
-
-  // estrellas simples
-  cx.fillStyle = 'rgba(255,255,255,.35)';
-  for(let i=0;i<40;i++){ cx.fillRect((i*90)%1700, (i*53)%280, 2,2); }
-
-  // plataformas
-  for(const s of game.platforms){
-    cx.fillStyle = '#223566'; cx.fillRect(s.x, s.y, s.w, s.h);
-    cx.strokeStyle = '#55aaff'; cx.lineWidth=2; cx.strokeRect(s.x, s.y, s.w, s.h);
-  }
-
-  // gemas
-  for(const g of game.gems){ if(g.taken) continue; cx.beginPath(); cx.arc(g.x,g.y,g.r,0,Math.PI*2); cx.fillStyle='#15407a'; cx.fill(); cx.lineWidth=3; cx.strokeStyle= '#7cf9ff'; cx.stroke(); cx.font='20px system-ui'; cx.textAlign='center'; cx.textBaseline='middle'; cx.fillStyle='#fff'; cx.fillText(g.kind,g.x,g.y); }
-
-  // enemigos Robadatos (fantasmitas)
-  for(const e of game.enemies){
-    cx.fillStyle = '#8b2a2a'; cx.fillRect(e.x, e.y, e.w, e.h);
-    cx.fillStyle = '#fff'; cx.fillRect(e.x+6, e.y+6, 6,6); cx.fillRect(e.x+e.w-12, e.y+6, 6,6);
-  }
-
-  // evento A icono
-  cx.font='26px system-ui'; cx.fillStyle='#fff'; cx.fillText('👪 Círculo', game.eventA.x, H-250);
-  // evento B icono
-  cx.fillText('❔ Chat', game.eventB.x, H-250);
-
-  // bóveda final
-  cx.fillStyle='#d4af37'; cx.fillRect(1400, H-140, 120, 100);
-  cx.strokeStyle='#fff'; cx.lineWidth=3; cx.strokeRect(1400,H-140,120,100);
-  cx.font='28px system-ui'; cx.fillStyle='#000'; cx.fillText('🏦',1460,H-90);
-
-  // jugador
-  const p = game.player;
-  cx.save();
-  cx.translate(p.x + p.w/2, p.y + p.h/2);
-  cx.scale(p.flip?-1:1,1);
-  // cuerpo
-  cx.fillStyle='#34a0ff'; cx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
-  cx.font='24px system-ui'; cx.textAlign='center'; cx.textBaseline='middle';
-  cx.fillText('🧒',0,0);
-  if(game.shield){ cx.strokeStyle='#caa3ff'; cx.lineWidth=4; cx.beginPath(); cx.arc(0,0,24,0,Math.PI*2); cx.stroke(); }
-  cx.restore();
-
-  cx.restore();
+  ctx.clearRect(0,0,canvas.width,canvas.height); const t = performance.now();
+  const gx=ctx.createLinearGradient(0,0,0,canvas.height); gx.addColorStop(0,'#8ed8ff'); gx.addColorStop(1,'#ccecff'); ctx.fillStyle=gx; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.beginPath(); ctx.arc(80-camX*0.05,80,40,0,Math.PI*2); ctx.fillStyle='#ffe066'; ctx.fill();
+  ctx.fillStyle='#fff'; for(const cl of clouds){ const x=cl.x-camX*0.3, y=cl.y; cloud(x,y,cl.r); }
+  ctx.save(); ctx.translate(-camX,0);
+  ctx.fillStyle='#66cc66'; ctx.fillRect(0,500,Levels[currentLevel].width+200,60);
+  for(const s of platforms){ drawPlatform(s.x,s.y,s.w,s.h); }
+  const vaultX = Levels[currentLevel].width - 100;
+  ctx.fillStyle='#f7d774'; ctx.fillRect(vaultX,420,120,100); ctx.strokeStyle='#6b4f00'; ctx.lineWidth=4; ctx.strokeRect(vaultX,420,120,100); ctx.font='34px system-ui'; ctx.fillStyle='#000'; ctx.fillText('🏦',vaultX+50,480);
+  for(const g of gems){ if(g.taken) continue; drawGem(g.x,g.y,g.r, g.emoji, g.t); }
+  for(const e of enemies){ drawThief(e.x,e.y,e.w,e.h); }
+  drawHero(player.x,player.y,player.w,player.h, player.shield);
+  for(const p of particles){ ctx.globalAlpha=Math.max(0,p.a); if(p.pulse){ ctx.strokeStyle='rgba(255,209,102,'+p.a+')'; ctx.lineWidth=4*p.a; ctx.beginPath(); ctx.arc(p.x,p.y,30+(1-p.a)*40,0,Math.PI*2); ctx.stroke(); } else { ctx.fillStyle=p.c; ctx.fillRect(p.x-2,p.y-2,4,4); } ctx.globalAlpha=1; }
+  ctx.restore();
 }
 
-// ---------- Bucle ----------
-let last=0; function loop(t){ const dt = Math.min(0.033, (t-last)/1000); last=t; update(dt); draw(); requestAnimationFrame(loop);} requestAnimationFrame(loop);
+function drawPlatform(x,y,w,h){ ctx.fillStyle='#49a84d'; ctx.fillRect(x,y,w,h); ctx.fillStyle='#2e7d32'; for(let i=0;i<w;i+=18){ ctx.fillRect(x+i,y+h-6,12,6); } }
 
-// ---------- Inicio ----------
-window.addEventListener('resize', ()=>{ /* mantenemos canvas responsivo por CSS */ });
-resetGame(); showBrief();
+// --- CAMBIO CLAVE --- Nueva función para dibujar gemas con emojis
+function drawGem(x, y, r, emo, t) {
+  const bobY = y + Math.sin(t * 5) * 4; // Animación de flotar
+  ctx.beginPath(); ctx.ellipse(x, bobY + r, r * 0.8, r * 0.3, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fill();
+  const grad = ctx.createLinearGradient(x-r, bobY-r, x+r, bobY+r);
+  grad.addColorStop(0, '#80deea'); grad.addColorStop(1, '#00acc1');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(x, bobY - r); ctx.lineTo(x + r, bobY); ctx.lineTo(x, bobY + r); ctx.lineTo(x - r, bobY); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#e0f7fa'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.font='18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff';
+  ctx.fillText(emo, x, bobY + 1);
+  const shineX = -r + ((performance.now()/8 + x) % (r*4));
+  ctx.save(); ctx.clip(); ctx.globalAlpha = 0.7; ctx.fillStyle = 'white'; ctx.beginPath();
+  ctx.moveTo(x + shineX - (r/2), bobY - r); ctx.lineTo(x + shineX + (r/2), bobY - r); ctx.lineTo(x + shineX, bobY + r); ctx.lineTo(x + shineX - r, bobY + r);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
 
-// ---------- Accesibilidad: decisiones con teclado ----------
-// Solo existen dos decisiones globales. Z = Compartir Gema, X = Proteger Tesoro.
-setInterval(()=>{
-  if(panel.style.display==='flex'){
-    if(keys.share){ resolve('share'); keys.share=false; }
-    if(keys.protect){ resolve('protect'); keys.protect=false; }
-  }
-}, 50);
+function drawThief(x,y,w,h){ ctx.fillStyle='#7b2b2b'; roundRect(x,y,w,h,10); ctx.fillStyle='#fff'; ctx.fillRect(x+6,y+6,6,6); ctx.fillRect(x+w-12,y+6,6,6); }
+function drawHero(x,y,w,h,shield){ ctx.fillStyle='#ff7f50'; roundRect(x,y,w,h,10); ctx.font='26px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🧒',x+w/2,y+h/2); if(shield){ ctx.strokeStyle='#b58cff'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(x+w/2,y+h/2,28,0,Math.PI*2); ctx.stroke(); } }
+function cloud(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.arc(x+r*0.9,y+6,r*0.8,0,Math.PI*2); ctx.arc(x-r*0.9,y+8,r*0.7,0,Math.PI*2); ctx.fill(); }
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); }
 
-// ---------- QA/Asserts ligeros ----------
-// 1) Solo dos decisiones disponibles: validar etiquetas de botones
-console.assert(decShare.textContent.includes('Compartir'), 'Decisión A label');
-console.assert(decProtect.textContent.includes('Proteger'), 'Decisión B label');
-// 2) Secretos nunca correctos para compartir => manejado en showEventB()
-// 3) Círculo de Confianza solo gustos => showEventA() no incluye secretos
-// 4) Voz en escenas clave: briefing, eventos, feedback, final
+let last=0; function loop(t){ const dt=Math.min(.033,(t-last)/1000); last=t; update(dt); draw(); requestAnimationFrame(loop);} requestAnimationFrame(loop);
+
+const startScreen=document.getElementById('startScreen');
+function startFromGreen(){
+  SFX.ui(); startScreen.style.display='none';
+  demoMode=true; startGame=false; tutorialStarted=false;
+  blink(btnStart,false); btnStart.disabled=true;
+  defineLevels(); loadLevel(0);
+  try{ const AC=(window.AudioContext||window.webkitAudioContext); if(AC){ const a=new AC(); a.resume&&a.resume(); } }catch(e){}
+  startTutorialOnce();
+}
+startScreen.addEventListener('pointerdown', startFromGreen);
+
+// --- CAMBIO CLAVE --- El botón de inicio ahora también habilita los controles
+btnStart.addEventListener('click',()=>{
+  SFX.ui(); Narrator.clear(); demoMode=false; startGame=true;
+  blink(btnStart,false); btnStart.disabled = true;
+  uiControls.classList.remove('disabled'); // Habilita los controles
+});
+btnRepeat.addEventListener('click',()=>{ SFX.ui(); startScreen.style.display='flex'; });
+
+defineLevels(); loadLevel(0);
 </script>
 </body>
 </html>
