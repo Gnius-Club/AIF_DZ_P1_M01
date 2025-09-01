@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>El Tesoro Secreto del Explorador — v5.0 (3 Niveles y Mejoras Finales)</title>
+  <title>El Tesoro Secreto del Explorador — v8.0 (Mejoras de Accesibilidad)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <style>
     :root{
@@ -16,21 +16,17 @@
 
     /* HUD */
     #hud{position:fixed;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;z-index:9}
-    .pill{background:var(--ui);padding:8px 12px;border-radius:999px;box-shadow:0 4px 10px var(--shadow);font-weight:800}
+    .pill{background:var(--ui);padding:8px 12px;border-radius:999px;box-shadow:0 4px 10px var(--shadow);font-weight:800; display:flex; align-items:center; gap: 6px;}
     .bar{width:220px;height:18px;border-radius:12px;overflow:hidden;border:2px solid #006bb3;background:#e6f6ff}
-    .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#14e1ff,#7cf9ff)}
+    .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#14e1ff,#7cf9ff); transition: width 0.3s ease;}
     #topBtns{display:flex;gap:8px}
     #btnStart{border:none;border-radius:999px;padding:8px 14px;font-weight:900;box-shadow:0 4px 10px var(--shadow);background:linear-gradient(#96ffc8,#37d4a3)}
-    #btnStart[disabled]{filter:grayscale(1);opacity:.7;cursor:not-allowed}
-    #btnRepeat{border:none;border-radius:999px;padding:8px 14px;font-weight:900;background:#fff}
+    #btnStart[disabled], #btnRestart[disabled]{filter:grayscale(1);opacity:.7;cursor:not-allowed}
+    #btnRestart, #btnPause{border:none;border-radius:999px;padding:8px 14px;font-weight:900;background:#fff; width: 50px;}
 
-    /* --- CAMBIO CLAVE --- */
-    /* Controles táctiles y su estado deshabilitado */
+    /* Controles táctiles */
     #ui{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:grid;grid-template-columns:repeat(5, minmax(72px, 1fr));gap:10px;z-index:10;width:min(96vw,720px); transition: opacity 0.3s ease;}
-    #ui.disabled {
-      pointer-events: none; /* No se puede hacer clic/tocar */
-      opacity: 0.6; /* Indicador visual de que está inactivo */
-    }
+    #ui.disabled { pointer-events: none; opacity: 0.6; }
     #ui button{height:98px;border:none;border-radius:18px;background:var(--ui);box-shadow:0 6px 16px var(--btnShadow);font-size:18px;font-weight:900;touch-action:none}
     #btnLeft{background:linear-gradient(#ffd0b8,#ffb084)}
     #btnRight{background:linear-gradient(#b8d6ff,#84b7ff)}
@@ -40,36 +36,72 @@
     .press{transform:translateY(2px) scale(.98)}
     .blink{animation:blink 1s infinite}
     @keyframes blink{0%,60%{box-shadow:0 0 0 0 rgba(255,209,102,.8)}100%{box-shadow:0 0 0 14px rgba(255,209,102,0)}}
-    .flashZoom{animation:flashZoom .65s ease forwards}
-    @keyframes flashZoom{0%{filter:brightness(1); transform:scale(1)}30%{filter:brightness(1.6); transform:scale(1.08)}60%{filter:brightness(1.2); transform:scale(1.02)}100%{filter:brightness(1); transform:scale(1)}}
-
-    :focus-visible{outline:4px solid #ffdd55;outline-offset:3px}
-
-    /* Pantalla verde de inicio */
-    #startScreen{position:fixed;inset:0;background:#18c27b;display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer}
-    #startScreen h1{color:#fff;font-size:8vw;line-height:1.1;text-shadow:0 6px 18px rgba(0,0,0,.35);margin:0}
-    #startScreen p{color:#f5fff9;font-size:3.5vw;margin:.3em 0 0 0}
+    
+    /* Pantallas de superposición (Overlay) */
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer; text-align:center; color:white; background:rgba(0,0,0,0.6); backdrop-filter: blur(8px);}
+    .overlay h1{font-size:8vw;line-height:1.1;text-shadow:0 6px 18px rgba(0,0,0,.35);margin:0}
+    .overlay p{font-size:3.5vw;margin:.3em 0 0 0; opacity: 0.9;}
+    #startScreen{background:#18c27b; backdrop-filter: none;}
+    #endScreen, #pauseScreen, #questionModal {display: none;}
+    #pauseScreen{background:rgba(0, 50, 100, 0.6);}
+    
+    #questionModal { cursor: default; }
+    .modal-content {
+      background: white; color: #333; padding: 24px; border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 90vw; width: 500px; text-align: center;
+    }
+    .modal-content h2 { margin: 0 0 10px; font-size: 24px; color: var(--accent); }
+    .modal-content p { font-size: 18px; margin: 0 0 20px; color: #555; }
+    .modal-buttons { display: flex; gap: 15px; justify-content: center; }
+    .modal-buttons button {
+      border: none; border-radius: 12px; padding: 12px 24px; font-size: 16px; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .modal-buttons button:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
+    #btnYes { background-color: var(--warn); color: white; } /* Rojo */
+    #btnNo { background-color: var(--ok); color: white; } /* Verde */
   </style>
 </head>
 <body>
-  <div id="startScreen" role="button" aria-label="Pantalla de inicio. Toque para iniciar">
-    <div style="text-align:center"><h1>INICIAR</h1><p>(toca en cualquier parte)</p></div>
+  
+  <div id="startScreen" class="overlay" role="button" aria-label="Pantalla de inicio. Toque para iniciar" tabindex="0">
+    <div><h1>INICIAR</h1><p>(toca o presiona cualquier tecla)</p></div>
+  </div>
+
+  <div id="endScreen" class="overlay" role="button" aria-label="Fin del juego. Toca para reiniciar">
+    <div><h1 id="endTitle">¡VICTORIA!</h1><p id="endMessage">Has protegido tus tesoros.</p><p style="font-size: 2.5vw; margin-top: 2em;">(Toca para volver a jugar)</p></div>
+  </div>
+  
+  <div id="pauseScreen" class="overlay" role="button" aria-label="Juego pausado. Toca para continuar">
+    <div><h1>PAUSA</h1><p>(Toca o presiona 'P' para continuar)</p></div>
+  </div>
+
+  <div id="questionModal" class="overlay">
+    <div class="modal-content">
+      <h2>¡Decisión Importante!</h2>
+      <p id="questionText">Un amigo en línea te pregunta... ¿Lo compartes?</p>
+      <div class="modal-buttons">
+        <button id="btnYes">Sí, compartir</button>
+        <button id="btnNo">No, proteger</button>
+      </div>
+    </div>
   </div>
 
   <canvas id="gameCanvas" width="960" height="540" aria-label="Pantalla de juego" tabindex="0"></canvas>
 
   <div id="hud" aria-live="polite">
-    <div class="pill">Nivel: <b id="levelNum">1</b>/3</div> <!-- --- CAMBIO CLAVE --- -->
+    <div class="pill">Nivel: <b id="levelNum">1</b>/3</div>
     <div class="bar" aria-label="Barra de Amistad"><span id="friendFill"></span></div>
-    <div class="pill">🔒 Cofres <b id="lifeNum">3</b></div>
-    <div class="pill">🛡️ Escudo <b id="shieldTxt">No</b></div>
+    <div class="pill">Cofres: <b id="lifeIcons">📦📦📦</b></div>
+    <div class="pill">🛡️ Escudo: <b id="shieldTxt">No</b></div>
     <div id="topBtns">
       <button id="btnStart" aria-label="Iniciar misión" disabled>🚀 Iniciar</button>
-      <button id="btnRepeat" aria-label="Repetir explicación">🔁 Repetir</button>
+      <button id="btnPause" aria-label="Pausar juego" style="display: none;">⏸️</button>
+      <!-- --- MEJORA: Botón ahora es para reiniciar el juego --- -->
+      <button id="btnRestart" aria-label="Reiniciar juego">🔁</button>
     </div>
   </div>
   
-  <!-- --- CAMBIO CLAVE --- Empieza deshabilitado por defecto -->
   <div id="ui" aria-label="Controles táctiles" class="disabled">
     <button id="btnLeft" aria-label="Mover izquierda">⬅️<div>Izquierda</div></button>
     <button id="btnRight" aria-label="Mover derecha">➡️<div>Derecha</div></button>
@@ -81,194 +113,365 @@
 <script>
 // --- NARRADOR Y SONIDOS (Sin cambios) ---
 const Narrator=(()=>{const q=[];let talking=false;const synth=window.speechSynthesis;let chosenVoice=null;let voicesReady=false;function pickVoice(){try{const vs=synth.getVoices();if(vs&&vs.length){chosenVoice=vs.find(v=>/Mex|Lat|es_MX/i.test(v.name+v.lang))||vs.find(v=>/es|Spanish/i.test(v.lang))||vs[0];voicesReady=true}}catch(e){}}function say(text,rate=0.85){q.push({text,rate});run()}function sayWait(text,rate=0.85){return new Promise(res=>{const item={text,rate,_resolve:res};q.push(item);run()})}function clear(){q.length=0;try{synth.cancel()}catch(e){}talking=false}function run(){if(talking||q.length===0)return;const item=q.shift();talking=true;const u=new SpeechSynthesisUtterance(item.text);u.lang='es-MX';if(chosenVoice)u.voice=chosenVoice;u.rate=item.rate;u.onend=()=>{talking=false;if(item._resolve)item._resolve();run()};try{synth.speak(u)}catch(e){talking=false;if(item._resolve)item._resolve()}}try{pickVoice();synth.onvoiceschanged=()=>{pickVoice()}}catch(e){}return{say,sayWait,clear,get ready(){return voicesReady}}})();
-const SFX=(()=>{let ctx;function AC(){ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();return ctx}function tone(type,f,t,v){const a=AC(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+t)}function seq(freqs,t=0.06){const a=AC();let when=a.currentTime;freqs.forEach(f=>{const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start(when);o.stop(when+t);when+=t})}return{jump(){seq([480,720,540],.05)},gem(){seq([880,1320],.08)},hit(){tone('sawtooth',160,.15,.07)},ui(){tone('triangle',980,.12,.06)}}})();
+const SFX=(()=>{let ctx;function AC(){ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();return ctx}function tone(type,f,t,v){const a=AC(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+t)}function seq(freqs,t=0.06){const a=AC();let when=a.currentTime;freqs.forEach(f=>{const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start(when);o.stop(when+t);when+=t})}return{jump(){seq([480,720,540],.05)},gem(){seq([880,1320],.08)},hit(){tone('sawtooth',160,.15,.07)},ui(){tone('triangle',980,.12,.06)},pause(){seq([523, 392],.08)},correct(){seq([523, 784],.1)},incorrect(){seq([392, 261],.1)}}})();
 
 const canvas=document.getElementById('gameCanvas'); const ctx=canvas.getContext('2d');
-const uiControls = document.getElementById('ui'); // Referencia para habilitar/deshabilitar controles
-const hudLevel=document.getElementById('levelNum'); const hudFriend=document.getElementById('friendFill'); const hudLives=document.getElementById('lifeNum'); const hudShield=document.getElementById('shieldTxt');
+const uiControls = document.getElementById('ui');
+const hudLevel=document.getElementById('levelNum'); const hudFriend=document.getElementById('friendFill'); const hudLives=document.getElementById('lifeIcons'); const hudShield=document.getElementById('shieldTxt');
+const questionModal = document.getElementById('questionModal');
+const questionText = document.getElementById('questionText');
+const btnYes = document.getElementById('btnYes');
+const btnNo = document.getElementById('btnNo');
 
-let startGame=false, demoMode=true, tutorialStarted=false;
-const player={x:120,y:0,w:40,h:46,vx:0,vy:0,onGround:false,shield:false};
-let lives=3, friend=0, gemsCollected=0;
+let startGame=false, demoMode=true, tutorialStarted=false, isPaused = false;
+const player={x:120,y:0,w:40,h:46,vx:0,vy:0,onGround:false,shield:false, dir: 1, invincible: 0};
+let lives=3, friend=0;
 
 const clouds=Array.from({length:6},(_,i)=>({x:i*160+Math.random()*100,y:40+Math.random()*90,r:24+Math.random()*18,spd:.15+.06*Math.random()}));
 
-// --- CAMBIO CLAVE --- Se añade el tercer nivel
-let Levels=[]; let currentLevel=0; let RIGHT_LIMIT=1800; let platforms=[], enemies=[], gems=[];
+let Levels=[]; let currentLevel=0; let RIGHT_LIMIT=1800; let platforms=[], enemies=[], gems=[], questionChests=[];
+
+const questions = [
+  { text: '"¿Cuál es tu dirección para enviarte un regalo?"', safeToShare: false },
+  { text: '"¿Te gustan los videojuegos de aventura?"', safeToShare: true },
+  { text: '"¿Me das tu número de teléfono para que hablemos?"', safeToShare: false },
+  { text: '"¿Cuál es tu color favorito?"', safeToShare: true },
+  { text: '"¿A qué escuela vas?"', safeToShare: false },
+  { text: '"¿Viste la última película de superhéroes?"', safeToShare: true },
+  { text: '"¿Cómo te llamas completo?"', safeToShare: false },
+];
+
 function defineLevels(){
   Levels=[
     { // Nivel 1
       width:2000,
       platforms:[{x:0,y:500,w:2000,h:40},{x:220,y:400,w:220,h:22},{x:520,y:340,w:220,h:22},{x:860,y:430,w:200,h:22},{x:1180,y:360,w:230,h:22}],
-      enemies:[{x:460,y:476,w:34,h:26,dir:1},{x:1020,y:456,w:34,h:26,dir:-1}],
-      gems:[160,260,560,820,900,1040,1260,1380].map((gx,i)=>({x:gx,y:470-(i%2?80:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false}))
+      enemies:[{x:460,y:476,w:34,h:26,dir:1}],
+      gems:[160,260,560,820,900,1040,1260,1380].map((gx,i)=>({x:gx,y:470-(i%2?80:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false})),
+      questionChests: [{x: 780, y: 460, questionIndex: 0}, {x: 1500, y: 460, questionIndex: 1}]
     },
     { // Nivel 2
       width:1600,
-      platforms:[{x:0,y:500,w:1800,h:40},{x:300,y:420,w:200,h:22},{x:700,y:360,w:200,h:22},{x:1080,y:300,w:200,h:22}],
+      platforms:[{x:0,y:500,w:1800,h:40},{x:300,y:420,w:200,h:22},{x:700,y:360,w:200,h:22, type:'moving', data:{dist:150,speed:35}},{x:1180,y:300,w:200,h:22}],
       enemies:[{x:520,y:476,w:34,h:26,dir:1}],
-      gems:[220,380,760,940,1200,1400].map((gx,i)=>({x:gx,y:470-(i%2?60:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false}))
+      gems:[220,380,760,940,1200,1400].map((gx,i)=>({x:gx,y:470-(i%2?60:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false})),
+      questionChests: [{x: 550, y: 460, questionIndex: 2}, {x: 1400, y: 460, questionIndex: 3}]
     },
     { // Nivel 3
       width: 2400,
-      platforms: [{x:0,y:500,w:2400,h:40},{x:250,y:410,w:150,h:22},{x:500,y:320,w:150,h:22},{x:750,y:410,w:150,h:22}, {x:1000, y:350, w:180, h:22}, {x:1300,y:420,w:120,h:22},{x:1500,y:340,w:120,h:22},{x:1700,y:260,w:120,h:22},{x:2000,y:380,w:180,h:22}],
+      platforms: [{x:0,y:500,w:2400,h:40},{x:250,y:410,w:150,h:22},{x:500,y:320,w:150,h:22, type:'moving', data:{dist:120,speed:50}},{x:750,y:410,w:150,h:22}, {x:1000, y:350, w:180, h:22}, {x:1300,y:420,w:120,h:22},{x:1500,y:340,w:120,h:22},{x:1700,y:260,w:120,h:22, type:'moving', data:{dist:200,speed:60}},{x:2000,y:380,w:180,h:22}],
       enemies: [{x:600,y:476,w:34,h:26,dir:1},{x:1400,y:476,w:34,h:26,dir:-1}],
-      gems: [300,550,800,1050,1350,1550,1750,2050].map((gx,i)=>({x:gx,y:470-(i%2?90:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false}))
+      gems: [300,550,800,1050,1350,1550,1750,2050].map((gx,i)=>({x:gx,y:470-(i%2?90:0),r:14,emoji:['🍕','🐶','🎨','🔵','🎮','🏃‍♂️'][i%6],t:Math.random()*10,taken:false})),
+      questionChests: [{x: 400, y: 460, questionIndex: 4}, {x: 1150, y: 460, questionIndex: 5}, {x: 1850, y: 460, questionIndex: 6}]
     }
   ];
 }
-function loadLevel(idx){ currentLevel = idx; const L = Levels[idx]; RIGHT_LIMIT=L.width-200; platforms=L.platforms.map(o=>({...o})); enemies=L.enemies.map(o=>({...o})); gems=L.gems.map(o=>({...o})); player.x=120; player.y=500-player.h; camX=0; hudLevel.textContent = `${idx + 1}/${Levels.length}`; }
+function loadLevel(idx){
+    currentLevel = idx; const L = Levels[idx];
+    RIGHT_LIMIT=L.width-200;
+    platforms=L.platforms.map(o=>({...o, startX: o.x}));
+    enemies=L.enemies.map(o=>({...o}));
+    gems=L.gems.map(o=>({...o}));
+    questionChests = L.questionChests.map(o => ({...o, w: 50, h: 40, opened: false}));
+    player.x=120; player.y=500-player.h; camX=0;
+    hudLevel.textContent = `${idx + 1}/${Levels.length}`;
+}
 
 let camX=0; let dashTimer=0, dashVX=0; const SPEED=160;
 
-const btnStart=document.getElementById('btnStart'); const btnRepeat=document.getElementById('btnRepeat'); const btnLeft=document.getElementById('btnLeft'); const btnRight=document.getElementById('btnRight'); const btnJump=document.getElementById('btnJump'); const btnJL=document.getElementById('btnJumpLeft'); const btnJR=document.getElementById('btnJumpRight');
+const btnStart=document.getElementById('btnStart');
+// --- MEJORA: Renombrar botón para claridad ---
+const btnRestart=document.getElementById('btnRestart');
+const btnLeft=document.getElementById('btnLeft'); const btnRight=document.getElementById('btnRight'); const btnJump=document.getElementById('btnJump'); const btnJL=document.getElementById('btnJumpLeft'); const btnJR=document.getElementById('btnJumpRight');
+const btnPause=document.getElementById('btnPause'); const pauseScreen=document.getElementById('pauseScreen');
 
 let moveLeft=false, moveRight=false;
 function blink(el,on=true){ el.classList.toggle('blink', on); }
-function press(el){ el.classList.add('press'); setTimeout(()=>el.classList.remove('press'), 180); }
 
 const particles=[]; function puff(x,y,c){ for(let i=0;i<10;i++){ particles.push({x,y,vx:(Math.random()-.5)*2,vy:-Math.random()*2-0.5,a:1,c}) } }
-function pulse(x,y){ particles.push({x,y,vx:0,vy:0,a:1,c:'#ffd166',pulse:true}); }
-function sparkleGem(){ const g=gems.find(g=>!g.taken)||gems[0]; for(let i=0;i<20;i++){ particles.push({x:g.x,y:g.y,vx:(Math.random()-.5)*3,vy:(Math.random()-.5)*3,a:1,c:'#7cf9ff'}) } }
-function demoHoldMove(dir){ return new Promise(res=>{ const t=600; if(dir<0){ moveLeft=true; setTimeout(()=>{ moveLeft=false; res(); }, t); } else { moveRight=true; setTimeout(()=>{ moveRight=false; res(); }, t); } }); }
-function demoJump(dir){ return new Promise(res=>{ if(player.onGround){ jump(true); if(dir!==0){ dashTimer=0.5; dashVX=dir*SPEED*1.25; } setTimeout(res, 650); } else { res(); } }); }
-function goCollectNearestGem(){ return new Promise(res=>{ const g=gems.find(g=>!g.taken); if(!g){ res(); return; } const dir=g.x>player.x?1:-1; dashTimer=0.6; dashVX=dir*SPEED*1.1; setTimeout(()=>{ jump(true); }, 140); setTimeout(res, 900); }); }
-function demoEnemyBump(){ return new Promise(res=>{ const e=enemies[0]; const old=e.x; e.x=player.x+80; setTimeout(()=>{ e.x=old; res(); }, 900); }); }
 
-async function tutorialSequence(){
-  demoMode=true; startGame=false; btnStart.disabled=true; blink(btnStart,false);
-  uiControls.classList.add('disabled'); // Asegura que los controles estén deshabilitados
-  player.x=120; player.y=500-player.h; player.vx=0; player.vy=0; player.onGround=true; lives=3; friend=0; hudFriend.style.width='0%'; hudLives.textContent=lives; hudShield.textContent='No';
+// --- MEJORA: Tutorial saltable ---
+function tutorialSequence(){
+  demoMode=true; startGame=false; isPaused = false;
+  btnStart.style.display = 'inline-block'; btnPause.style.display = 'none';
+  btnRestart.disabled = false;
+  uiControls.classList.add('disabled');
+  player.x=120; player.y=454; player.vx=0; player.vy=0; player.onGround=true; lives=3; friend=0;
+  hudFriend.style.width='0%'; hudLives.textContent='📦'.repeat(lives); hudShield.textContent='No';
   Narrator.clear();
-  // El texto del tutorial se mantiene como en la versión que te gustó
-  await Narrator.sayWait('¡Hola! Soy Kael, tu guía.');
-  pulse(Levels[0].width-50, 470); await Narrator.sayWait('Misión: lleva tus cofres a la bóveda sin perder secretos.');
-  await Narrator.sayWait('Secretos: nombre, casa y teléfono. No se comparten.');
-  sparkleGem(); await Narrator.sayWait('Gustos como pizza o perros sí puedes.');
-  blink(btnLeft,true); await Narrator.sayWait('Para ir a la izquierda, presiona este botón.'); press(btnLeft); await demoHoldMove(-1); blink(btnLeft,false);
-  blink(btnRight,true); await Narrator.sayWait('Para ir a la derecha, este botón.'); press(btnRight); await demoHoldMove(1); blink(btnRight,false);
-  blink(btnJump,true); await Narrator.sayWait('Para saltar, toca este botón.'); press(btnJump); await demoJump(0); blink(btnJump,false);
-  blink(btnJR,true); await Narrator.sayWait('Salta y avanza con este.'); press(btnJR); await demoJump(1); blink(btnJR,false);
-  blink(btnJL,true); await Narrator.sayWait('Si te pasas, salta hacia atrás.'); press(btnJL); await demoJump(-1); blink(btnJL,false);
-  await Narrator.sayWait('Junta gemas para amistad y escudo.'); await goCollectNearestGem();
-  await Narrator.sayWait('Evita Robadatos. Si te tocan, pierdes un cofre.'); await demoEnemyBump();
+  // La narración comienza, pero el juego no espera a que termine.
+  Narrator.say('¡Hola! Soy Kael. Usa las flechas o los botones para moverte y saltar.');
+  Narrator.say('Recoge gemas de amistad. Evita a los Robadatos.');
+  Narrator.say('Toca los cofres especiales para responder preguntas y proteger tus secretos.');
+  Narrator.say('¡Tu misión es llegar a la bóveda final con tus secretos a salvo! ¡Presiona Iniciar cuando quieras!');
+  // El botón Iniciar se activa de inmediato.
   btnStart.disabled=false; blink(btnStart,true);
-  btnStart.classList.add('flashZoom');
-  btnStart.addEventListener('animationend',()=>btnStart.classList.remove('flashZoom'),{once:true});
-  await Narrator.sayWait('Presiona el botón verde que está parpadeando arriba. Este botón es para iniciar el juego. ¡Diviértete y aprende!');
 }
 function startTutorialOnce(){ if(tutorialStarted) return; tutorialStarted=true; tutorialSequence(); }
 
-function jump(fromDemo=false){ if(player.onGround){ player.y -= 2; player.vy = -820; player.onGround=false; SFX.jump(); puff(player.x+player.w/2, player.y+player.h, '#ffffff'); if(!fromDemo) blink(btnJump,false); } }
-function pressDown(el, cb){ el.addEventListener('pointerdown',ev=>{ el.setPointerCapture?.(ev.pointerId); el.classList.add('press'); cb(true); }); el.addEventListener('pointerup',()=>{ el.classList.remove('press'); cb(false); }); el.addEventListener('pointercancel',()=>{ el.classList.remove('press'); cb(false); }); el.addEventListener('pointerleave',()=>{ el.classList.remove('press'); cb(false); }); }
-pressDown(btnLeft, v=>{ moveLeft=v; }); pressDown(btnRight, v=>{ moveRight=v; });
-btnJump.addEventListener('pointerdown',()=>{ press(btnJump); jump(); });
-btnJR.addEventListener('pointerdown',()=>{ press(btnJR); jump(); dashTimer=0.42; dashVX=+SPEED*1.25; });
-btnJL.addEventListener('pointerdown',()=>{ press(btnJL); jump(); dashTimer=0.42; dashVX=-SPEED*1.25; });
+function jump(){ if(player.onGround){ player.y -= 2; player.vy = -820; player.onGround=false; SFX.jump(); puff(player.x+player.w/2, player.y+player.h, '#ffffff'); } }
+
+function pressDown(el, cb){ el.addEventListener('pointerdown',ev=>{ el.setPointerCapture?.(ev.pointerId); el.classList.add('press'); cb(true); }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(evt => el.addEventListener(evt, ()=> { el.classList.remove('press'); cb(false); })); }
 
 function collide(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+
 function update(dt){
+  if(!startGame && !demoMode) return;
   for(const cl of clouds){ cl.x += cl.spd; if(cl.x-60>canvas.width+camX) cl.x = camX - 120; }
-  if(!(startGame||demoMode)) return;
+
+  const t = performance.now() / 1000;
+  for(const p of platforms){ if(p.type === 'moving'){ p.x = p.startX + Math.sin(t * p.data.speed / 50) * p.data.dist; } }
+
   let baseVX = (moveRight?SPEED:0) + (moveLeft?-SPEED:0);
+  if(baseVX !== 0) player.dir = Math.sign(baseVX);
+  if(player.invincible > 0) player.invincible -= dt;
+
   if(dashTimer>0){ baseVX = dashVX; dashTimer -= dt; if(dashTimer<=0){ dashVX=0; } }
-  player.vx = baseVX;
-  player.vy += 1900*dt; if(player.vy>1200) player.vy=1200;
+  player.vx = baseVX; player.vy += 1900*dt; if(player.vy>1200) player.vy=1200;
   player.x += player.vx*dt;
   for(const s of platforms){ if(collide(player,s)){ if(player.vx>0) player.x = s.x - player.w; else if(player.vx<0) player.x = s.x + s.w; } }
-  player.y += player.vy*dt; player.onGround=false;
-  for(const s of platforms){ if(collide(player,s)){ if(player.vy>0){ player.y = s.y - player.h; player.vy=0; player.onGround=true; } else if(player.vy<0){ player.y = s.y + s.h; player.vy=0; } } }
-  if(player.y>500-player.h){ player.y=500-player.h; player.vy=0; player.onGround=true; }
-  camX = Math.max(0, Math.min(player.x-220, RIGHT_LIMIT));
-  for(const e of enemies){ e.x += e.dir*40*dt; if(e.x<380) e.dir=1; if(e.x>RIGHT_LIMIT+100) e.dir=-1; if(startGame && collide(player,e)){ if(player.shield){ player.shield=false; hudShield.textContent='No'; Narrator.say('Escudo te protege.'); } else { lives=Math.max(0,lives-1); hudLives.textContent=lives; SFX.hit(); Narrator.say('¡Cuidado! Tesoro perdido.'); if(lives<=0){ gameOver(false); } } player.x -= e.dir*10; } }
-  for(const g of gems){ if(g.taken) continue; g.t += dt; if(Math.hypot(player.x+20-g.x, player.y+20-g.y) < 28){ g.taken=true; gemsCollected++; friend=Math.min(100, friend+25); hudFriend.style.width=friend+'%'; SFX.gem(); if(startGame) Narrator.say('¡Gema segura!'); if(friend>=100 && !player.shield){ player.shield=true; friend=0; hudFriend.style.width='0%'; hudShield.textContent='Sí'; if(startGame) Narrator.say('Escudo activo.'); } } }
-  for(let i=particles.length-1;i>=0;i--) { particles[i].x+=particles[i].vx; particles[i].y+=particles[i].vy; particles[i].a-=0.02; if(particles[i].a<=0) particles.splice(i,1); }
   
-  // --- CAMBIO CLAVE --- Lógica para múltiples niveles
-  if(startGame && player.x > RIGHT_LIMIT + 60){
-    if(currentLevel < Levels.length - 1){
-      startLevelTransition(currentLevel + 1);
-    } else {
-      gameOver(true); // Fin del juego al pasar el último nivel
+  let onMovingPlatform = null;
+  player.y += player.vy*dt; player.onGround=false;
+  for(const s of platforms){ if(collide(player,s)){ if(player.vy>0){ player.y = s.y - player.h; player.vy=0; player.onGround=true; if(s.type === 'moving') onMovingPlatform = s; } else if(player.vy<0){ player.y = s.y + s.h; player.vy=0; } } }
+  if(player.y>500-player.h){ player.y=500-player.h; player.vy=0; player.onGround=true; }
+  
+  if(onMovingPlatform){ player.x += (onMovingPlatform.x - onMovingPlatform.prevX) || 0; }
+  platforms.forEach(p => p.prevX = p.x);
+
+  camX = Math.max(0, Math.min(player.x-220, RIGHT_LIMIT));
+  for(const e of enemies){ e.x += e.dir*40*dt; if(e.x<380) e.dir=1; if(e.x>RIGHT_LIMIT+100) e.dir=-1;
+    if(startGame && player.invincible <= 0 && collide(player,e)){
+      if(player.shield){ player.shield=false; hudShield.textContent='No'; Narrator.say('Escudo te protege.'); player.invincible = 1.5; } else {
+        lives=Math.max(0,lives-1); hudLives.textContent='📦'.repeat(lives); SFX.hit(); Narrator.say('¡Cuidado! Secreto perdido.');
+        player.invincible = 1.5;
+        if(lives<=0){ gameOver(false); }
+      }
+      player.x -= e.dir*10;
     }
   }
+  for(const g of gems){ if(g.taken) continue; g.t += dt; if(Math.hypot(player.x+20-g.x, player.y+20-g.y) < 28){ g.taken=true; friend=Math.min(100, friend+25); hudFriend.style.width=friend+'%'; SFX.gem(); if(startGame) Narrator.say('¡Gema de amistad!'); if(friend>=100 && !player.shield){ player.shield=true; friend=0; hudFriend.style.width='0%'; hudShield.textContent='Sí'; if(startGame) Narrator.say('Escudo activo.'); } } }
+  for(let i=particles.length-1;i>=0;i--) { particles[i].x+=particles[i].vx; particles[i].y+=particles[i].vy; particles[i].a-=0.02; if(particles[i].a<=0) particles.splice(i,1); }
+  
+  if(startGame) {
+      for(const chest of questionChests) {
+          if(!chest.opened && collide(player, chest)) {
+              chest.opened = true;
+              askQuestion(chest.questionIndex);
+          }
+      }
+  }
+
+  if(startGame && player.x > RIGHT_LIMIT + 60){
+    if(currentLevel < Levels.length - 1){ startLevelTransition(currentLevel + 1); } else { gameOver(true); }
+  }
 }
+
+let currentQuestion;
+function askQuestion(qIndex) {
+    if (isPaused) return;
+    isPaused = true;
+    currentQuestion = questions[qIndex];
+    questionText.textContent = currentQuestion.text;
+    questionModal.style.display = 'flex';
+    uiControls.classList.add('disabled');
+    
+    // --- MEJORA: Narración de la pregunta y opciones ---
+    Narrator.clear();
+    const fullNarration = `Un amigo en línea te pregunta. ${currentQuestion.text}. Presiona el botón rojo para compartir. O el botón verde para proteger tu secreto.`;
+    Narrator.say(fullNarration);
+}
+
+function handleAnswer(choseYes) {
+    const isCorrect = (choseYes === currentQuestion.safeToShare);
+    if(isCorrect) {
+        Narrator.say("¡Correcto! Es bueno saber qué se puede compartir.");
+        SFX.correct();
+    } else {
+        lives = Math.max(0, lives - 1);
+        hudLives.textContent = '📦'.repeat(lives);
+        Narrator.say("¡Cuidado! Ese es un secreto personal. Has perdido un cofre.");
+        SFX.incorrect();
+        if(lives <= 0) {
+            setTimeout(() => gameOver(false), 500);
+        }
+    }
+    closeQuestion();
+}
+
+function closeQuestion() {
+    questionModal.style.display = 'none';
+    isPaused = false;
+    if(startGame) uiControls.classList.remove('disabled');
+}
+
+
+
 function startLevelTransition(nextLevel){
-  startGame=false;
-  uiControls.classList.add('disabled'); // Deshabilita controles en la transición
-  Narrator.say('¡Siguiente nivel!');
+  startGame=false; uiControls.classList.add('disabled'); Narrator.say('¡Siguiente nivel!');
   const targetX = RIGHT_LIMIT + 100;
-  const step=()=>{ if(player.x<targetX){ player.x+=4; requestAnimationFrame(step);} else { setTimeout(()=>{ loadLevel(nextLevel); startGame=true; uiControls.classList.remove('disabled'); }, 500); } }; // Rehabilita al cargar
+  const step=()=>{ if(player.x<targetX){ player.x+=4; requestAnimationFrame(step);} else { setTimeout(()=>{ loadLevel(nextLevel); startGame=true; uiControls.classList.remove('disabled'); }, 500); } };
   step();
 }
 
 function gameOver(win){
-  startGame=false;
-  uiControls.classList.add('disabled'); // Deshabilita controles en Game Over
-  if(win){ Narrator.say('¡Felicidades! ¡Bóveda alcanzada! Has ganado la medalla de guardián.'); } else { Narrator.say('Respira. Intentemos de nuevo.'); }
-  setTimeout(()=>{ demoMode=true; startGame=false; tutorialStarted=false; blink(btnStart,false); btnStart.disabled=true; loadLevel(0); startTutorialOnce(); }, 2500);
+  startGame=false; demoMode=true;
+  uiControls.classList.add('disabled');
+  const endScreen = document.getElementById('endScreen');
+  const endTitle = document.getElementById('endTitle');
+  const endMessage = document.getElementById('endMessage');
+  
+  if(win){
+    endTitle.textContent = '¡VICTORIA!';
+    endMessage.textContent = '¡Has protegido tus secretos y ganado la medalla de guardián!';
+    Narrator.say('¡Felicidades! ¡Bóveda alcanzada! Has ganado la medalla de guardián.');
+  } else {
+    endTitle.textContent = 'INTÉNTALO DE NUEVO';
+    endMessage.textContent = 'Los Robadatos se llevaron tus secretos.';
+    Narrator.say('No te preocupes. Respira profundo e intentemos de nuevo.');
+  }
+  endScreen.style.display = 'flex';
+  const restart = () => {
+    endScreen.style.display = 'none';
+    restartGame();
+    endScreen.removeEventListener('click', restart);
+    endScreen.removeEventListener('keydown', restart);
+  };
+  setTimeout(() => {
+      endScreen.addEventListener('click', restart);
+      endScreen.addEventListener('keydown', restart);
+      endScreen.focus();
+  }, 1500);
 }
 
 function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height); const t = performance.now();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   const gx=ctx.createLinearGradient(0,0,0,canvas.height); gx.addColorStop(0,'#8ed8ff'); gx.addColorStop(1,'#ccecff'); ctx.fillStyle=gx; ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.beginPath(); ctx.arc(80-camX*0.05,80,40,0,Math.PI*2); ctx.fillStyle='#ffe066'; ctx.fill();
   ctx.fillStyle='#fff'; for(const cl of clouds){ const x=cl.x-camX*0.3, y=cl.y; cloud(x,y,cl.r); }
+  
   ctx.save(); ctx.translate(-camX,0);
   ctx.fillStyle='#66cc66'; ctx.fillRect(0,500,Levels[currentLevel].width+200,60);
   for(const s of platforms){ drawPlatform(s.x,s.y,s.w,s.h); }
   const vaultX = Levels[currentLevel].width - 100;
   ctx.fillStyle='#f7d774'; ctx.fillRect(vaultX,420,120,100); ctx.strokeStyle='#6b4f00'; ctx.lineWidth=4; ctx.strokeRect(vaultX,420,120,100); ctx.font='34px system-ui'; ctx.fillStyle='#000'; ctx.fillText('🏦',vaultX+50,480);
+  
   for(const g of gems){ if(g.taken) continue; drawGem(g.x,g.y,g.r, g.emoji, g.t); }
   for(const e of enemies){ drawThief(e.x,e.y,e.w,e.h); }
-  drawHero(player.x,player.y,player.w,player.h, player.shield);
+  for(const chest of questionChests) { drawQuestionChest(chest.x, chest.y, chest.w, chest.h, chest.opened); }
+  
+  if(player.invincible > 0 && Math.floor(performance.now()/100) % 2 === 0) {
+    /* No dibujar para efecto de parpadeo */
+  } else {
+    drawHero(player.x,player.y,player.w,player.h, player.shield);
+  }
+
   for(const p of particles){ ctx.globalAlpha=Math.max(0,p.a); if(p.pulse){ ctx.strokeStyle='rgba(255,209,102,'+p.a+')'; ctx.lineWidth=4*p.a; ctx.beginPath(); ctx.arc(p.x,p.y,30+(1-p.a)*40,0,Math.PI*2); ctx.stroke(); } else { ctx.fillStyle=p.c; ctx.fillRect(p.x-2,p.y-2,4,4); } ctx.globalAlpha=1; }
   ctx.restore();
 }
 
 function drawPlatform(x,y,w,h){ ctx.fillStyle='#49a84d'; ctx.fillRect(x,y,w,h); ctx.fillStyle='#2e7d32'; for(let i=0;i<w;i+=18){ ctx.fillRect(x+i,y+h-6,12,6); } }
-
-// --- CAMBIO CLAVE --- Nueva función para dibujar gemas con emojis
 function drawGem(x, y, r, emo, t) {
-  const bobY = y + Math.sin(t * 5) * 4; // Animación de flotar
+  const bobY = y + Math.sin(t * 5) * 4;
   ctx.beginPath(); ctx.ellipse(x, bobY + r, r * 0.8, r * 0.3, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fill();
-  const grad = ctx.createLinearGradient(x-r, bobY-r, x+r, bobY+r);
-  grad.addColorStop(0, '#80deea'); grad.addColorStop(1, '#00acc1');
+  const grad = ctx.createLinearGradient(x-r, bobY-r, x+r, bobY+r); grad.addColorStop(0, '#80deea'); grad.addColorStop(1, '#00acc1');
   ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(x, bobY - r); ctx.lineTo(x + r, bobY); ctx.lineTo(x, bobY + r); ctx.lineTo(x - r, bobY); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = '#e0f7fa'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.font='18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff';
-  ctx.fillText(emo, x, bobY + 1);
-  const shineX = -r + ((performance.now()/8 + x) % (r*4));
-  ctx.save(); ctx.clip(); ctx.globalAlpha = 0.7; ctx.fillStyle = 'white'; ctx.beginPath();
-  ctx.moveTo(x + shineX - (r/2), bobY - r); ctx.lineTo(x + shineX + (r/2), bobY - r); ctx.lineTo(x + shineX, bobY + r); ctx.lineTo(x + shineX - r, bobY + r);
-  ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.font='18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff'; ctx.fillText(emo, x, bobY + 1);
+}
+function drawThief(x,y,w,h){ ctx.fillStyle='#7b2b2b'; roundRect(x,y,w,h,10); ctx.font='22px system-ui'; ctx.textAlign='center'; ctx.fillText('👾', x+w/2, y+h/2+2); }
+function drawHero(x,y,w,h,shield){
+  ctx.save();
+  if(player.dir === -1) { ctx.scale(-1, 1); x = -(x + w); }
+  ctx.fillStyle='#ff7f50'; roundRect(x,y,w,h,10); ctx.font='26px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🧒',x+w/2,y+h/2);
+  ctx.restore();
+  if(shield){ ctx.strokeStyle='#b58cff'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(player.x+w/2,player.y+h/2,28,0,Math.PI*2); ctx.stroke(); }
+}
+function drawQuestionChest(x, y, w, h, opened) {
+  ctx.globalAlpha = opened ? 0.5 : 1;
+  ctx.fillStyle = '#a56a44';
+  roundRect(x, y, w, h, 8);
+  ctx.fillStyle = '#f0c05a';
+  ctx.font = '28px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText(opened ? '✅' : '❓', x + w/2, y + h/2 + 2);
+  ctx.globalAlpha = 1;
 }
 
-function drawThief(x,y,w,h){ ctx.fillStyle='#7b2b2b'; roundRect(x,y,w,h,10); ctx.fillStyle='#fff'; ctx.fillRect(x+6,y+6,6,6); ctx.fillRect(x+w-12,y+6,6,6); }
-function drawHero(x,y,w,h,shield){ ctx.fillStyle='#ff7f50'; roundRect(x,y,w,h,10); ctx.font='26px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🧒',x+w/2,y+h/2); if(shield){ ctx.strokeStyle='#b58cff'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(x+w/2,y+h/2,28,0,Math.PI*2); ctx.stroke(); } }
 function cloud(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.arc(x+r*0.9,y+6,r*0.8,0,Math.PI*2); ctx.arc(x-r*0.9,y+8,r*0.7,0,Math.PI*2); ctx.fill(); }
 function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); }
 
-let last=0; function loop(t){ const dt=Math.min(.033,(t-last)/1000); last=t; update(dt); draw(); requestAnimationFrame(loop);} requestAnimationFrame(loop);
+let last=0;
+function loop(t){
+  if(isPaused) { last = t; requestAnimationFrame(loop); return; }
+  const dt=Math.min(.033,(t-last)/1000); last=t;
+  update(dt); draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 
 const startScreen=document.getElementById('startScreen');
 function startFromGreen(){
   SFX.ui(); startScreen.style.display='none';
-  demoMode=true; startGame=false; tutorialStarted=false;
-  blink(btnStart,false); btnStart.disabled=true;
-  defineLevels(); loadLevel(0);
-  try{ const AC=(window.AudioContext||window.webkitAudioContext); if(AC){ const a=new AC(); a.resume&&a.resume(); } }catch(e){}
-  startTutorialOnce();
+  restartGame();
 }
 startScreen.addEventListener('pointerdown', startFromGreen);
+startScreen.addEventListener('keydown', startFromGreen);
 
-// --- CAMBIO CLAVE --- El botón de inicio ahora también habilita los controles
+// --- MEJORA: Función centralizada para reiniciar ---
+function restartGame() {
+    tutorialStarted = false;
+    demoMode = true;
+    startGame = false;
+    blink(btnStart, false);
+    btnStart.disabled = true;
+    defineLevels();
+    loadLevel(0);
+    startTutorialOnce();
+}
+
 btnStart.addEventListener('click',()=>{
   SFX.ui(); Narrator.clear(); demoMode=false; startGame=true;
-  blink(btnStart,false); btnStart.disabled = true;
-  uiControls.classList.remove('disabled'); // Habilita los controles
+  blink(btnStart,false); btnStart.style.display = 'none';
+  btnPause.style.display = 'inline-block';
+  uiControls.classList.remove('disabled');
+  Narrator.say("¡Misión iniciada!");
 });
-btnRepeat.addEventListener('click',()=>{ SFX.ui(); startScreen.style.display='flex'; });
+btnRestart.addEventListener('click', () => {
+    SFX.ui();
+    restartGame();
+});
+
+function togglePause() {
+    if (!startGame || questionModal.style.display === 'flex') return;
+    isPaused = !isPaused; SFX.pause();
+    pauseScreen.style.display = isPaused ? 'flex' : 'none';
+    uiControls.classList.toggle('disabled', isPaused);
+}
+btnPause.addEventListener('click', togglePause);
+pauseScreen.addEventListener('click', togglePause);
+
+btnYes.addEventListener('click', () => handleAnswer(true));
+btnNo.addEventListener('click', () => handleAnswer(false));
+
+pressDown(btnLeft, v=>{ moveLeft=v; });
+pressDown(btnRight, v=>{ moveRight=v; });
+btnJump.addEventListener('pointerdown',()=>{ jump(); });
+btnJR.addEventListener('pointerdown',()=>{ jump(); dashTimer=0.42; dashVX=+SPEED*1.25; });
+btnJL.addEventListener('pointerdown',()=>{ jump(); dashTimer=0.42; dashVX=-SPEED*1.25; });
+
+window.addEventListener('keydown', (e) => {
+  if (isPaused) return;
+  if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') { moveLeft = true; btnLeft.classList.add('press');
+  } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') { moveRight = true; btnRight.classList.add('press');
+  } else if (e.key === ' ' || e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') { e.preventDefault(); jump(); btnJump.classList.add('press'); }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key.toLowerCase() === 'p') { togglePause(); }
+  if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') { moveLeft = false; btnLeft.classList.remove('press'); }
+  else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') { moveRight = false; btnRight.classList.remove('press'); }
+  else if (e.key === ' ' || e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') { btnJump.classList.remove('press'); }
+});
 
 defineLevels(); loadLevel(0);
 </script>
